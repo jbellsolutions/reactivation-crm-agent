@@ -15,11 +15,22 @@ ORGO_PATHS = ("own", "invoicing")
 MODEL_PROVIDERS = ("openrouter", "orgo-ai")
 TEXT_MAX = 300
 
+# What the voice intake asks (Justin, 2026-11-07): the business, what they sell and where, their CRM, their lists and
+# text consent, and whether to add Lead Radar. The booking link, rep and time zone come at the setup call; the
+# qualified-appointment criteria are ours to tell them; Orgo and the model aren't asked.
 REQUIRED = (
-    "business", "owner_first_name", "owner_email", "website", "sells", "service_area",
-    "rep_first_name", "booking_link", "timezone", "qualifying", "lists", "crm", "plays",
-    "orgo", "model", "agreement",
+    "business", "owner_first_name", "owner_email", "sells", "service_area", "lists", "crm", "plays", "agreement",
 )
+DEFAULTS = {"orgo": {"path": "own", "has_account": False}, "model": {"provider": "openrouter"}}
+
+
+def complete(intake, offer):
+    """The intake with what isn't asked filled in: the standard criteria, the default Orgo path and model."""
+    out = {**DEFAULTS, **intake}
+    out.setdefault("rep_first_name", intake.get("owner_first_name"))
+    if not out.get("qualifying"):
+        out["qualifying"] = list(offer["qualified_appointment"]["standard_criteria"])
+    return out
 
 
 def clean(text, limit=TEXT_MAX):
@@ -42,15 +53,17 @@ def validate(intake):
     if not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", intake["owner_email"]):
         problems.append("owner_email doesn't look like an email address")
     for key in ("website", "booking_link"):
-        if not str(intake[key]).startswith("https://"):
+        if intake.get(key) and not str(intake[key]).startswith("https://"):
             problems.append(f"{key} must start with https://")
-    try:
-        from zoneinfo import ZoneInfo
-        ZoneInfo(intake["timezone"])
-    except Exception:
-        problems.append(f"timezone {intake['timezone']!r} isn't an IANA zone like America/New_York")
-    if not isinstance(intake["qualifying"], list) or not all(clean(q) for q in intake["qualifying"]):
-        problems.append("qualifying must be a list of the client's criteria for a qualified appointment")
+    if intake.get("timezone"):
+        try:
+            from zoneinfo import ZoneInfo
+            ZoneInfo(intake["timezone"])
+        except Exception:
+            problems.append(f"timezone {intake['timezone']!r} isn't an IANA zone like America/New_York")
+    q = intake.get("qualifying")
+    if q is not None and (not isinstance(q, list) or not all(clean(x) for x in q)):
+        problems.append("qualifying must be a list of criteria for a qualified appointment")
     for i, lst in enumerate(intake["lists"]):
         if lst.get("type") not in LIST_TYPES:
             problems.append(f"lists[{i}].type must be one of {', '.join(LIST_TYPES)}")
@@ -61,9 +74,9 @@ def validate(intake):
     plays = intake["plays"]
     if not plays or any(p not in PLAYS for p in plays):
         problems.append("plays must be reactivation and/or lead_radar")
-    if intake["orgo"].get("path") not in ORGO_PATHS:
+    if (intake.get("orgo") or DEFAULTS["orgo"]).get("path") not in ORGO_PATHS:
         problems.append("orgo.path must be own (their Orgo account) or invoicing (our Orgo payment link)")
-    if intake["model"].get("provider") not in MODEL_PROVIDERS:
+    if (intake.get("model") or DEFAULTS["model"]).get("provider") not in MODEL_PROVIDERS:
         problems.append("model.provider must be openrouter or orgo-ai")
     if intake["agreement"].get("accepted") is not True:
         problems.append("the agreement isn't accepted yet")

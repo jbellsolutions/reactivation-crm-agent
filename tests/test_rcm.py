@@ -42,8 +42,8 @@ class IntakeTests(unittest.TestCase):
 
     def test_missing_and_bad_fields_are_named(self):
         bad = sample()
-        del bad["booking_link"]
-        self.assertIn("missing: booking_link", intake.validate(bad))
+        del bad["sells"]
+        self.assertIn("missing: sells", intake.validate(bad))
         bad = sample()
         bad["website"] = "http://example.com"
         bad["lists"][0]["sms_consent"] = "maybe"
@@ -52,6 +52,20 @@ class IntakeTests(unittest.TestCase):
         self.assertIn("website must start with https://", problems)
         self.assertIn("sms_consent", problems)
         self.assertIn("agreement isn't accepted", problems)
+
+    def test_the_voice_questions_alone_are_enough(self):
+        voice = {k: sample()[k] for k in ("business", "owner_first_name", "owner_email", "sells", "service_area",
+                                          "lists", "crm", "plays", "agreement")}
+        self.assertEqual(intake.validate(voice), [])
+        tmp = Path(tempfile.mkdtemp())
+        try:
+            res = onboard.onboard(voice, tmp)
+            charter = (Path(res["folder"]) / "deliver" / "charters" / "PROJECT-CHARTER.md").read_text()
+            self.assertIn("They showed up for the appointment", charter)
+            self.assertIn("set at the setup call", charter)
+            self.assertTrue(any("booking link" in n["what"] for n in res["needs"]))
+        finally:
+            shutil.rmtree(tmp)
 
     def test_texts_only_where_consent_is_on_record(self):
         self.assertEqual(intake.channels(sample()), {"old_quotes": ["email", "sms"], "past_customers": ["email"]})

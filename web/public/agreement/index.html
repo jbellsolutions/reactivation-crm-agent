@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lead Generation Agreement</title>
+<meta name="description" content="A one-page lead generation agreement: you pay only for qualified appointments.">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<main>
+  <p class="small">Step 1 of 3</p>
+  <h1>Lead generation agreement</h1>
+  <div class="card">
+    <p><strong>What we do.</strong> We restart conversations with the people already in your CRM who went quiet, answer every reply, and book the interested ones with you.</p>
+    <p><strong>What you pay for.</strong> Only qualified appointments: the person showed up, they're interested and want to do business, and they're in your area. Not leads, and not no-shows.</p>
+    <p><strong>For the first 90 days</strong> you pay per qualified appointment, at the price we set for your business. Your $500 deposit is credit toward them. After 90 days, if we both feel good about it, we move to commission or stay per appointment.</p>
+    <p><strong>Your data and your rules.</strong> Everything runs on your own accounts. Texts go only to people who agreed to get them. You approve the first messages before anything goes out, and you can stop at any time.</p>
+    <p class="small">The full terms: <a href="/terms/" target="_blank">read them here</a>.</p>
+  </div>
+
+  <form id="f" novalidate>
+    <label for="name">Your full name</label><input id="name" name="name" autocomplete="name" required>
+    <label for="email">Your email</label><input id="email" name="email" type="email" autocomplete="email" required>
+    <label><input type="checkbox" id="agreed" style="width:auto"> I agree to this lead generation agreement.</label>
+    <p><button class="btn" type="submit">Sign and continue</button></p>
+    <div id="msg" class="msg" role="status"></div>
+  </form>
+</main>
+<script>
+  const f = document.getElementById("f"), msg = document.getElementById("msg");
+  f.addEventListener("submit", async e => {
+    e.preventDefault();
+    const body = { name: f.name.value, email: f.email.value, agreed: document.getElementById("agreed").checked };
+    const r = await fetch("/api/agreement", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+    const out = await r.json().catch(() => ({}));
+    if (r.ok && out.row) { location.href = "/intake/?r=" + encodeURIComponent(out.row); return; }
+    msg.className = "msg err"; msg.textContent = [out.error, ...(out.problems || [])].filter(Boolean).join(" ");
+  });
+</script>
+</body>
+</html>

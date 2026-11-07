@@ -19,7 +19,10 @@
   "pricing": "custom",
   "price_status": "Justin, 2026-11-07: \"depends on person and niche. custom\". Each client's price is set in their Signups row (Price) or their agreement, before their deposit opens.",
   "intro_days": 90,
-  "after_intro": ["commission", "per_appointment"],
+  "after_intro": [
+    "commission",
+    "per_appointment"
+  ],
   "commission_rate": null,
   "unused_credit_rule": null,
   "low_credit_rule": "Top-up requested when the credit can't cover one more appointment.",
@@ -36,11 +39,31 @@
       "existing_customer",
       "wrong_number_or_spam",
       "fails_criteria"
-    ]
+    ],
+    "standard_criteria": [
+      "They showed up for the appointment",
+      "They're interested and want to do business",
+      "They're inside the service area"
+    ],
+    "criteria_rule": "Justin, 2026-11-07: we tell them what makes a qualified appointment, we don't ask them."
   },
   "plays": {
-    "reactivation": {"default": true, "profiles": ["reactivation", "reply", "sales", "deal"]},
-    "lead_radar": {"default": false, "profiles": ["radar"], "note": "Finds people asking for what the client sells on socials and groups. Uses the client's own keys, never ours."}
+    "reactivation": {
+      "default": true,
+      "profiles": [
+        "reactivation",
+        "reply",
+        "sales",
+        "deal"
+      ]
+    },
+    "lead_radar": {
+      "default": false,
+      "profiles": [
+        "radar"
+      ],
+      "note": "Finds people asking for what the client sells on socials and groups. Uses the client's own keys, never ours."
+    }
   },
   "client_pays": {
     "orgo_computer": "Their own Orgo plan, or an Orgo payment link in our business name (Invoicing). Starter is $29 a month for one always-on Medium.",

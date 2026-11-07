@@ -1,68 +1,49 @@
-// POST /api/intake: the intake form after the deposit. Checks the paid Stripe session, then writes one row to
-// the Reactivation Signups data source in Notion for the poller (`rcm poll`). Off until its three settings exist.
+// POST /api/intake: step 3. The answers the voice intake (or the typed form) gathered, saved on the person's
+// Signups row. Only after this does the page offer the deposit, which is the last step.
+import { json, rich, notion, textOf, ROW, off, OFF } from "../../lib/notion.js";
 
 export const FIELDS = [
-  "business", "owner_first_name", "owner_full_name", "owner_email", "website", "sells", "service_area",
-  "rep_first_name", "booking_link", "timezone", "qualifying",
+  "business", "website", "sells", "service_area", "crm_kind", "crm_name",
   "old_quotes_count", "old_quotes_sms_consent", "past_customers_count", "past_customers_sms_consent",
-  "no_shows_count", "no_shows_sms_consent", "lost_deals_count", "lost_deals_sms_consent",
-  "crm_kind", "crm_name", "plays", "orgo_path", "has_orgo", "model_provider", "slack", "agreement_accepted",
+  "no_shows_count", "no_shows_sms_consent", "lost_deals_count", "lost_deals_sms_consent", "plays", "notes",
 ];
-const REQUIRED = ["business", "owner_first_name", "owner_email", "website", "sells", "service_area",
-  "booking_link", "timezone", "qualifying", "crm_kind"];
-const CHUNK = 1900;
+const REQUIRED = ["business", "sells", "service_area", "crm_kind"];
+const CONSENT = ["yes", "no", "unknown"];
 
-const json = (status, body) => new Response(JSON.stringify(body), {
-  status, headers: { "content-type": "application/json", "cache-control": "no-store" } });
-
-const rich = text => ({ rich_text: Array.from({ length: Math.ceil(text.length / CHUNK) || 1 },
-  (_, i) => ({ type: "text", text: { content: text.slice(i * CHUNK, (i + 1) * CHUNK) } })) });
-
-export function check(form) {
-  const problems = REQUIRED.filter(k => !String(form[k] ?? "").trim()).map(k => `missing: ${k}`);
-  if (form.owner_email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(form.owner_email)) problems.push("owner_email isn't an email address");
-  for (const k of ["website", "booking_link"]) if (form[k] && !String(form[k]).startsWith("https://")) problems.push(`${k} must start with https://`);
-  if (![true, "true", "on", "yes"].includes(form.agreement_accepted)) problems.push("accept the agreement to continue");
-  const lists = ["old_quotes", "past_customers", "no_shows", "lost_deals"].filter(l => Number(form[`${l}_count`]) > 0);
-  if (!lists.length) problems.push("add at least one list and roughly how many are on it");
+export function check(a) {
+  const problems = REQUIRED.filter(k => !String(a[k] ?? "").trim()).map(k => `missing: ${k}`);
+  const lists = ["old_quotes", "past_customers", "no_shows", "lost_deals"].filter(l => Number(a[`${l}_count`]) > 0);
+  if (!lists.length) problems.push("at least one list, and roughly how many are on it");
+  for (const l of lists) if (a[`${l}_sms_consent`] && !CONSENT.includes(a[`${l}_sms_consent`])) problems.push(`${l}: text consent is yes, no or unknown`);
+  if (a.website && !String(a.website).startsWith("https://")) problems.push("website must start with https://");
   return problems;
 }
 
 export async function onRequestPost({ request, env }) {
-  if (!env.STRIPE_READ_KEY || !env.NOTION_TOKEN || !env.RCM_SIGNUPS_DS) {
-    return json(503, { error: "Signup isn't switched on yet. Nothing was charged twice; please email justin@usingaitoscale.com." });
-  }
-  let form;
-  try { form = await request.json(); } catch { return json(400, { error: "Send the form as JSON." }); }
-  const sid = String(form.session_id || "");
-  if (!/^cs_(test|live)_[A-Za-z0-9]+$/.test(sid)) return json(400, { error: "This page needs the link from your deposit receipt." });
-  const problems = check(form);
+  if (off(env)) return json(503, OFF);
+  let a;
+  try { a = await request.json(); } catch { return json(400, { error: "Send the answers as JSON." }); }
+  const row = String(a.row || "");
+  if (!ROW.test(row)) return json(400, { error: "Start from the agreement page, so your answers land on your signup." });
+  const problems = check(a);
   if (problems.length) return json(400, { error: "A few answers are missing.", problems });
 
-  const s = await fetch(`https://api.stripe.com/v1/checkout/sessions/${sid}`,
-    { headers: { Authorization: `Bearer ${env.STRIPE_READ_KEY}` } });
-  if (!s.ok) return json(400, { error: "We couldn't find that deposit." });
-  const session = await s.json();
-  if (session.payment_status !== "paid") return json(400, { error: "That deposit isn't paid yet." });
-  const paidBy = String(session.customer_details?.email || "").toLowerCase();
-  if (paidBy !== String(form.owner_email).trim().toLowerCase()) {
-    return json(400, { error: "Use the same email you paid the deposit with." });
+  const page = await notion(env, "GET", `/pages/${row}`);
+  const status = page.data?.properties?.Status?.select?.name;
+  if (!page.ok || !["agreement signed", "intake done"].includes(status)) {
+    return json(400, { error: "We couldn't find your signed agreement. Please start from the agreement page." });
   }
-
-  const intake = Object.fromEntries(FIELDS.filter(k => form[k] !== undefined && form[k] !== "").map(k => [k, form[k]]));
-  const row = await fetch("https://api.notion.com/v1/pages", {
-    method: "POST",
-    headers: { Authorization: `Bearer ${env.NOTION_TOKEN}`, "Notion-Version": "2025-09-03", "Content-Type": "application/json" },
-    body: JSON.stringify({
-      parent: { data_source_id: env.RCM_SIGNUPS_DS },
-      properties: {
-        Name: { title: [{ type: "text", text: { content: String(intake.business).slice(0, 200) } }] },
-        Status: { select: { name: "new" } },
-        "Checkout session": rich(sid),
-        Intake: rich(JSON.stringify(intake)),
-      },
-    }),
-  });
-  if (!row.ok) return json(502, { error: "We couldn't save your answers. Please try again in a moment." });
-  return json(200, { ok: true });
+  let base = {};
+  try { base = JSON.parse(textOf(page.data.properties.Intake) || "{}"); } catch { base = {}; }
+  const answers = Object.fromEntries(FIELDS.filter(k => a[k] !== undefined && a[k] !== "").map(k => [k, a[k]]));
+  // The signer's name and email come from the signed agreement; newer answers replace older ones.
+  const owner = Object.fromEntries(["owner_email", "owner_full_name", "owner_first_name"].map(k => [k, base[k]]));
+  const intake = { ...base, ...answers, ...owner, agreement_accepted: true };
+  const r = await notion(env, "PATCH", `/pages/${row}`, { properties: {
+    Name: { title: [{ type: "text", text: { content: String(intake.business).slice(0, 200) } }] },
+    Status: { select: { name: "intake done" } },
+    Intake: rich(JSON.stringify(intake)),
+  } });
+  if (!r.ok) return json(502, { error: "We couldn't save your answers. Please try again in a moment." });
+  return json(200, { ok: true, email: base.owner_email || "" });
 }

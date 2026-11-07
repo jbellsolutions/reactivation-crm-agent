@@ -46,7 +46,7 @@ def stripe_calls(host):
             "payment_intent_data[setup_future_usage]": "off_session",
             "customer_creation": "always",
             "after_completion[type]": "redirect",
-            "after_completion[redirect][url]": f"https://{host}/intake/?session_id={{CHECKOUT_SESSION_ID}}",
+            "after_completion[redirect][url]": f"https://{host}/thanks/?session_id={{CHECKOUT_SESSION_ID}}",
             "metadata[offer]": OFFER["id"], "metadata[offer_version]": OFFER["version"],
         }),
     ]

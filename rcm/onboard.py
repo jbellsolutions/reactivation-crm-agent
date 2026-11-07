@@ -54,8 +54,8 @@ def values(intake, offer, today):
         "rep_first_name": c(intake["rep_first_name"], 40),
         "sells": c(intake["sells"]),
         "service_area": c(intake["service_area"]),
-        "booking_link": c(intake["booking_link"]),
-        "timezone": intake["timezone"],
+        "booking_link": c(intake.get("booking_link") or "set at the setup call"),
+        "timezone": intake.get("timezone") or "set at the setup call",
         "crm_kind": intake["crm"]["kind"],
         "crm_name": c(intake["crm"].get("name") or intake["crm"]["kind"], 40),
         "plays": ", ".join(intake["plays"]),
@@ -101,8 +101,8 @@ def manifest(intake, offer, slug, agreed):
             "profiles": intake_mod.profiles(intake, offer),
             "channels": chans,
             "terms": agreed,
-            "booking_link": intake["booking_link"],
-            "timezone": intake["timezone"],
+            "booking_link": intake.get("booking_link"),
+            "timezone": intake.get("timezone"),
             "owner_first_name": intake_mod.clean(intake["owner_first_name"], 40),
         },
     }
@@ -139,6 +139,9 @@ def needs_for(intake, terms_error, engine_pinned):
     if any(l["sms_consent"] == "unknown" for l in intake["lists"]):
         out.append({"who": "client", "what": "confirm SMS consent per list",
                     "why": "lists marked unknown get email only until then"})
+    if not intake.get("booking_link") or not intake.get("timezone"):
+        out.append({"who": "Justin", "what": "get their booking link and time zone on the setup call",
+                    "why": "the agents book into the client's own calendar"})
     if not engine_pinned:
         out.append({"who": "Justin", "what": "pin an engine release in kit/engine.lock.json",
                     "why": "the install stops at the engine step until a release exists (plan M1)"})
@@ -153,6 +156,7 @@ def onboard(intake, clients_root, offer=None, today=None, readout=None):
     problems = intake_mod.validate(intake)
     if problems:
         raise OnboardError("intake incomplete: " + "; ".join(problems))
+    intake = intake_mod.complete(intake, offer)
     slug = intake_mod.slug(intake["business"])
     name = re.sub(r"[^A-Za-z0-9 &'.-]+", "", intake_mod.clean(intake["business"], 60)).strip() or slug
     folder = Path(clients_root) / name
