@@ -164,7 +164,8 @@ def onboard(intake, clients_root, offer=None, today=None, readout=None):
         agreed = offer_mod.terms(offer, intake.get("agreed"))
     except offer_mod.OfferError as e:
         terms_error, agreed = str(e), None
-    engine_pinned = ENGINE_LOCK.exists() and json.loads(ENGINE_LOCK.read_text()).get("tag")
+    lock = json.loads(ENGINE_LOCK.read_text()) if ENGINE_LOCK.exists() else {}
+    engine_pinned = bool(lock.get("sha256") and (lock.get("tag") or lock.get("bundle") == "pack"))
     needs = needs_for(intake, terms_error, engine_pinned)
 
     (folder / "source" / "intake.json").write_text(json.dumps(intake, indent=2) + "\n")
