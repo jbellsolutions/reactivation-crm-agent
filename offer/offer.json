@@ -1,0 +1,56 @@
+{
+  "id": "reactivation-crm-agent",
+  "name": "Reactivation CRM Agent",
+  "name_status": "working name; Justin and the Offer session set the public one",
+  "version": "2026-11-07",
+  "justin": {
+    "2026-11-07": [
+      "Our goal is to work with you on commission. For the first 90 days of us working together and getting to know each other, we do it on a per-appointment basis, and you only have to pay for the qualified appointments that are generated.",
+      "If, after 90 days, we both feel good about it, we can either go to a commission or we can stay on appointment.",
+      "We do it based off of not per lead, but per actual appointment that you do.",
+      "They put $500 down that goes towards those leads, with a specific, dedicated price for that actual lead.",
+      "For the most part, though, we want to do it as a reactivation CRM agent.",
+      "There's no cost on our end."
+    ]
+  },
+  "deposit_usd": 500,
+  "deposit_rule": "Credit held against qualified appointments. Each qualified appointment draws its price from it.",
+  "price_per_qualified_appointment_usd": null,
+  "proposed_price_usd": 100,
+  "price_status": "Justin sets it. 100 is a proposal: the deposit then covers five appointments.",
+  "intro_days": 90,
+  "after_intro": ["commission", "per_appointment"],
+  "commission_rate": null,
+  "unused_credit_rule": null,
+  "low_credit_rule": "Top-up requested when the credit can't cover one more appointment.",
+  "qualified_appointment": {
+    "doc": "offer/QUALIFIED-APPOINTMENT.md",
+    "dispute_hours": 72,
+    "duplicate_days": 90,
+    "existing_customer_days": 60,
+    "not_qualified_reasons": [
+      "no_show",
+      "outside_service_area",
+      "not_decision_maker",
+      "duplicate",
+      "existing_customer",
+      "wrong_number_or_spam",
+      "fails_criteria"
+    ]
+  },
+  "plays": {
+    "reactivation": {"default": true, "profiles": ["reactivation", "reply", "sales", "deal"]},
+    "lead_radar": {"default": false, "profiles": ["radar"], "note": "Finds people asking for what the client sells on socials and groups. Uses the client's own keys, never ours."}
+  },
+  "client_pays": {
+    "orgo_computer": "Their own Orgo plan, or an Orgo payment link in our business name (Invoicing). Starter is $29 a month for one always-on Medium.",
+    "model": "Their own model key (OpenRouter), or Orgo AI credit at cost through Invoicing.",
+    "texting_and_email": "Their CRM's own sending and texting registration.",
+    "crm": "Their own CRM. Without one, their own GoHighLevel account."
+  },
+  "we_pay": {
+    "shared_send_gate": "One multi-tenant gate service, fixed, not per client.",
+    "factory_spec_pass": "Only for clients onboarded from a recording, capped by the Factory's budget. A form signup costs nothing."
+  },
+  "outreach_rule": "Outreach never quotes a price. The $500 and the appointment price live on the signup page and on the call."
+}

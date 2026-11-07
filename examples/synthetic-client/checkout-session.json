@@ -1,0 +1,11 @@
+{
+  "_comment": "A made-up Stripe Checkout session, in the shape the API returns. Test data only.",
+  "id": "cs_test_synthetic0001",
+  "object": "checkout.session",
+  "payment_status": "paid",
+  "amount_total": 50000,
+  "currency": "usd",
+  "created": 1793977200,
+  "consent": {"terms_of_service": "accepted"},
+  "customer_details": {"email": "dana@example.com", "name": "Dana Example"}
+}

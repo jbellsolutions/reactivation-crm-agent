@@ -1,0 +1,23 @@
+{
+  "_comment": "A made-up intake form row, flattened. Test data only.",
+  "business": "Harbor Test Roofing",
+  "owner_first_name": "Dana",
+  "owner_email": "Dana@example.com",
+  "website": "https://example.com",
+  "sells": "Roof replacement and repair for homeowners",
+  "service_area": "Tampa Bay, Florida",
+  "rep_first_name": "Sam",
+  "booking_link": "https://cal.com/example/roof-check",
+  "timezone": "America/New_York",
+  "qualifying": "- Owns the home\n- Inside the service area\n- Roof is 10 years or older",
+  "old_quotes_count": 1800,
+  "old_quotes_sms_consent": "yes",
+  "past_customers_count": 600,
+  "past_customers_sms_consent": "unknown",
+  "crm_kind": "ghl",
+  "crm_name": "GoHighLevel",
+  "plays": "reactivation, lead_radar",
+  "orgo_path": "own",
+  "has_orgo": false,
+  "model_provider": "openrouter"
+}
