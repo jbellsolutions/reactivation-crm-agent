@@ -17,7 +17,7 @@ Justin's answers of 2026-11-07:
 | 7 | The poller and its schedule | **Approved.** `scripts/install-poller.sh` runs `rcm poll --write-builds` every 15 minutes. It waits on `NOTION_TOKEN` and `STRIPE_READ_KEY` and does nothing without them | Justin adds the keys | None |
 | 8 | The engine: the CRM team (opener, replies, closer, deals), packaged by `scripts/build_engine.py`, pinned in `kit/engine.lock.json`, carried in each client's pack | **Built and tested offline.** Not yet run on a client's computer | The first client's install proves it | None |
 | 9 | A support login: `support@usingaitoscale.com` and a free Orgo account, to accept client workspace invites | Open | Justin (creating accounts is his) | None |
-| 10 | `reactivation-crm-agent` in the Products catalog (`products/catalog.json` in client-build-system, which the Notion sync reads) | Requested from the AIOS client build system session | That session | None |
+| 10 | `reactivation-crm-agent` in the Products catalog (`products/catalog.json` in client-build-system, which the Notion sync reads) | **Done.** In the catalog at `12f1968` (front door, price unset); the Notion Products sync carries it | | None |
 | 11 | Sending: drafts go through the guarded sender, as the CRM team's do | Already deployed (test mode) | Justin approves each draft type once | Fixed, not per client |
 | 12 | Better than GrokBot's FSL-1.1 licence, for use inside a paid offer | Open | Justin | None |
 | 13 | The install email template, approved once | Open | Justin | None |
