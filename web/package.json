@@ -1,0 +1,9 @@
+{
+  "name": "reactivation-signup",
+  "private": true,
+  "type": "module",
+  "description": "The Reactivation CRM Agent's signup: the offer page, the intake page and POST /api/intake. Cloudflare Pages, not deployed.",
+  "scripts": {
+    "test": "node --test tests/*.test.js"
+  }
+}

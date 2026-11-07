@@ -11,11 +11,18 @@ and says why.
 
 The engine is pinned in kit/engine.lock.json (repo, tag, sha256) and installed from that release. The kit
 never carries a copy of the engine.
+
+Better than GrokBot is the default window. Its `.env.local` already holds the client's Orgo key, so
+`--btg-env <path>` reuses that key (and its workspace) for every `orgo` call. The computer is then bought on
+the client's own Orgo account, in the same workspace Better than GrokBot uses, and the client picks it in
+Better than GrokBot. Only ORGO_API_KEY and BOPS_ORGO_WORKSPACE are read from that file, and neither is
+printed.
 """
 
 import base64
 import io
 import json
+import os
 import subprocess
 import tarfile
 from pathlib import Path
@@ -32,6 +39,22 @@ def engine_lock(path=ENGINE_LOCK):
     return lock if lock.get("repo") and lock.get("tag") and lock.get("sha256") else None
 
 
+BTG_KEYS = ("ORGO_API_KEY", "BOPS_ORGO_WORKSPACE")
+
+
+def btg_env(path):
+    """The two values the kit reuses from Better than GrokBot's .env.local. Nothing else is read."""
+    out = {}
+    if path and Path(path).exists():
+        for line in Path(path).read_text().splitlines():
+            k, sep, v = line.strip().partition("=")
+            if sep and k.strip() in BTG_KEYS:
+                out[k.strip()] = v.strip().strip('"').strip("'")
+    if out.get("ORGO_API_KEY") and not out.get("BOPS_ORGO_WORKSPACE"):
+        out["BOPS_ORGO_WORKSPACE"] = "bops"
+    return out
+
+
 def charters_payload(folder):
     """The rendered charters as one base64 tar, so they reach the computer in a single command."""
     buf = io.BytesIO()
@@ -41,22 +64,32 @@ def charters_payload(folder):
     return base64.b64encode(buf.getvalue()).decode()
 
 
-def plan(folder, orgo="orgo", profile=None, lock_path=ENGINE_LOCK, support_email=SUPPORT_EMAIL):
+def plan(folder, orgo="orgo", profile=None, lock_path=ENGINE_LOCK, support_email=SUPPORT_EMAIL, btg=None):
     folder = Path(folder)
     m = json.loads((folder / "deliver" / "manifest.json").read_text())
     name = m["orgo"]["computer_name"]
     base = [orgo] + (["--profile", profile] if profile else [])
     profiles = m["rcm"]["profiles"]
     lock = engine_lock(lock_path)
-    steps = [
+    btg = btg or {}
+    where = ["--workspace", btg["BOPS_ORGO_WORKSPACE"]] if btg.get("BOPS_ORGO_WORKSPACE") else []
+    steps = []
+    if not btg.get("ORGO_API_KEY"):
+        steps.append({"id": "btg", "kind": "person", "who": "the client", "cmd": None,
+                      "proof": "Better than GrokBot is running with the client's Orgo key in its .env.local",
+                      "how": "Install Better than GrokBot from https://github.com/jbellsolutions/better-than-grokbot "
+                             "(its INSTALL.md), with an Orgo key from orgo.ai, API keys. New to Orgo: sign up there "
+                             "and pick Starter. Then rerun with --btg-env <its .env.local>. To skip Better than "
+                             "GrokBot, sign in with `orgo login` instead."})
+    steps += [
         {"id": "signed_in", "kind": "auto", "who": "kit", "cmd": base + ["--json", "whoami"],
          "proof": "Orgo answers with the client's account",
-         "if_fails": "the client signs in: `orgo login` opens the browser (or buys a computer in Better than GrokBot)"},
+         "if_fails": "the client's Orgo key in Better than GrokBot, or `orgo login`, signs them in"},
         {"id": "computer_exists", "kind": "auto", "who": "kit", "cmd": base + ["--json", "computers", "list"],
          "proof": f"a computer named {name!r} is listed"},
         {"id": "computer", "kind": "asks", "who": "kit, on the client's yes",
          "cmd": base + ["computers", "create", "--name", name, "--ram", COMPUTER["ram"],
-                        "--cpu", COMPUTER["cpu"], "--disk", COMPUTER["disk"]],
+                        "--cpu", COMPUTER["cpu"], "--disk", COMPUTER["disk"]] + where,
          "proof": "Starter's one always-on Medium: 8 GB, 2 vCPU, 40 GB, on the client's own plan",
          "skip_if": "computer_exists"},
     ]
@@ -88,6 +121,9 @@ def plan(folder, orgo="orgo", profile=None, lock_path=ENGINE_LOCK, support_email
         {"id": "crm_sign_in", "kind": "person", "who": "the client",
          "cmd": base + ["computers", "view", name],
          "proof": "the CRM is signed in on the computer's browser; the agents never see the password"},
+        {"id": "btg_attach", "kind": "person", "who": "the client", "cmd": None,
+         "proof": f"Better than GrokBot's main agent uses {name!r}, so the client watches it there",
+         "how": f"In Better than GrokBot: the main agent, Details, Orgo computer, choose {name!r}, Use this computer"},
         {"id": "check", "kind": "asks", "who": "kit",
          "cmd": base + ["computers", "bash", name, "-c", f"rcm-engine check --client {m['client']}"],
          "proof": "every line passes: memory, profiles, CRM token without send rights, gate, consent, STOP"},
@@ -96,10 +132,12 @@ def plan(folder, orgo="orgo", profile=None, lock_path=ENGINE_LOCK, support_email
 
 
 def run(folder, orgo="orgo", profile=None, apply=False, yes=False, runner=subprocess.run,
-        lock_path=ENGINE_LOCK):
+        lock_path=ENGINE_LOCK, btg_env_path=None):
     """Walk the plan. Returns one result per step; never runs an `asks` step without yes."""
     results, seen = [], {}
-    for s in plan(folder, orgo, profile, lock_path):
+    btg = btg_env(btg_env_path)
+    env = {**os.environ, **btg} if btg.get("ORGO_API_KEY") else None
+    for s in plan(folder, orgo, profile, lock_path, btg=btg):
         if s.get("skip_if") and seen.get(s["skip_if"]):
             results.append({**s, "result": "skipped", "note": "already there"})
             continue
@@ -112,7 +150,7 @@ def run(folder, orgo="orgo", profile=None, apply=False, yes=False, runner=subpro
         if not apply or (s["kind"] == "asks" and not yes):
             results.append({**s, "result": "planned", "note": "dry run" if not apply else "waits for the client's yes"})
             continue
-        p = runner(s["cmd"], capture_output=True, text=True)
+        p = runner(s["cmd"], capture_output=True, text=True, env=env)
         ok = p.returncode == 0
         if s["id"] == "computer_exists":
             name = json.loads((Path(folder) / "deliver" / "manifest.json").read_text())["orgo"]["computer_name"]

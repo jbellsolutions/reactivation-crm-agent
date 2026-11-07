@@ -13,7 +13,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from rcm import install, intake, ledger, offer, onboard, signup  # noqa: E402
+from rcm import install, intake, ledger, notion, offer, onboard, poll, signup  # noqa: E402
 
 EXAMPLE = ROOT / "examples" / "synthetic-client"
 TERMS = {"price_usd": 100.0, "deposit_usd": 500.0, "intro_days": 90, "dispute_hours": 72,
@@ -23,7 +23,7 @@ STUB_ORGO = """#!/usr/bin/env python3
 import json, os, sys
 args = sys.argv[1:]
 with open(os.environ["ORGO_LOG"], "a") as f:
-    f.write(json.dumps(args) + "\\n")
+    f.write(json.dumps(args + ["KEY=" + ("set" if os.environ.get("ORGO_API_KEY") == "test-key-not-real" else "unset")]) + "\\n")
 if "whoami" in args:
     print(json.dumps({"email": "dana@example.com"}))
 elif args[-2:] == ["computers", "list"]:
@@ -83,6 +83,110 @@ class SignupTests(unittest.TestCase):
         form = {**self.load("form-row.json"), "owner_email": "someone@example.org"}
         with self.assertRaises(signup.SignupError):
             signup.intake_from(self.load("checkout-session.json"), form, offer.load())
+
+
+def sel(*names):
+    return {"type": "select", "select": {"options": [{"name": n} for n in names]}}
+
+
+TXT, TITLE = {"type": "rich_text"}, {"type": "title"}
+SIGNUPS = {"Name": TITLE, "Status": sel("new", "onboarded", "needs fix"), "Checkout session": TXT, "Intake": TXT,
+           "Source ID": TXT, "Note": TXT}
+BUILDS = {"Build": TITLE, "Client name": TXT, "Source ID": TXT, "Waiting on": TXT, "Product id": TXT,
+          "Spend": {"type": "number"}, "Status": sel("new", "running", "paused", "stopped", "failed", "done"),
+          "Stage": sel("spec", "understand", "design", "build", "review", "fix", "walk", "package")}
+
+
+class FakeNotionStripe:
+    """Stands in for Notion's data sources and Stripe's Checkout sessions. Records every write."""
+
+    def __init__(self, rows, sessions):
+        self.rows, self.sessions, self.writes, self.builds = rows, sessions, [], []
+
+    def __call__(self, method, url, headers, body):
+        if url.startswith(notion.STRIPE):
+            sid = url.rsplit("/", 1)[1]
+            return (200, self.sessions[sid]) if sid in self.sessions else (404, {"error": {"message": "no such session"}})
+        path = url[len(notion.NOTION):]
+        if method == "GET" and path == "/data_sources/signups":
+            return 200, {"properties": SIGNUPS}
+        if method == "GET" and path == "/data_sources/builds":
+            return 200, {"properties": BUILDS}
+        if method == "POST" and path == "/data_sources/signups/query":
+            return 200, {"results": [r for r in self.rows if r["status"] == "new" and r.setdefault("seen", True)] and
+                         [self.page(r) for r in self.rows if r["status"] == "new"], "has_more": False}
+        if method == "POST" and path == "/data_sources/builds/query":
+            sid = body["filter"]["rich_text"]["equals"]
+            return 200, {"results": [{"id": b["id"]} for b in self.builds if b["sid"] == sid], "has_more": False}
+        if method == "POST" and path == "/pages":
+            self.writes.append(("create", body))
+            sid = body["properties"]["Source ID"]["rich_text"][0]["text"]["content"]
+            self.builds.append({"id": f"b{len(self.builds)}", "sid": sid})
+            return 200, {"id": f"b{len(self.builds)}"}
+        if method == "PATCH" and path.startswith("/pages/"):
+            pid = path.split("/")[2]
+            self.writes.append(("update", pid, body))
+            for r in self.rows:
+                if r["id"] == pid and "Status" in body["properties"]:
+                    r["status"] = body["properties"]["Status"]["select"]["name"]
+            return 200, {"id": pid}
+        return 404, {"message": f"unexpected {method} {path}"}
+
+    @staticmethod
+    def page(r):
+        def t(v):
+            return {"type": "rich_text", "rich_text": [{"plain_text": v}]}
+        return {"id": r["id"], "properties": {"Name": {"type": "title", "title": [{"plain_text": r["form"].get("business", "")}]},
+                                               "Status": {"type": "select", "select": {"name": r["status"]}},
+                                               "Checkout session": t(r["session"]), "Intake": t(json.dumps(r["form"]))}}
+
+
+class PollTests(unittest.TestCase):
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp())
+        form = json.loads((EXAMPLE / "form-row.json").read_text())
+        session = json.loads((EXAMPLE / "checkout-session.json").read_text())
+        bad = {**form, "owner_email": "someone@example.org", "business": "Mismatch Test Co"}
+        self.fake = FakeNotionStripe(
+            [{"id": "r1", "status": "new", "session": session["id"], "form": form},
+             {"id": "r2", "status": "new", "session": session["id"], "form": bad}],
+            {session["id"]: session})
+        self.cfg = {"NOTION_TOKEN": "t", "STRIPE_READ_KEY": "k", "RCM_SIGNUPS_DS": "signups",
+                    "RCM_BUILDS_DS": "builds", "RCM_CLIENTS_ROOT": str(self.tmp / "clients")}
+        self.api = notion.Api("t", "k", http=self.fake)
+
+    def tearDown(self):
+        shutil.rmtree(self.tmp)
+
+    def test_a_paid_signup_becomes_a_record_and_a_builds_row(self):
+        out = poll.poll(self.api, self.cfg, write_builds=True)
+        self.assertEqual(out["onboarded"], ["rcm:harbor-test-roofing"])
+        self.assertEqual([n["row"] for n in out["needs_fix"]], ["r2"])
+        folder = self.tmp / "clients" / "Harbor Test Roofing"
+        mail = json.loads((folder / "factory" / "outbox" / "install-email.json").read_text())
+        self.assertEqual((mail["to"], mail["status"], mail["template_approved"]), ("dana@example.com", "draft", False))
+        self.assertTrue(Path(mail["attach"]).exists())
+        create = next(w for w in self.fake.writes if w[0] == "create")[1]
+        self.assertEqual(create["parent"], {"data_source_id": "builds"})
+        self.assertEqual(create["properties"]["Status"], {"select": {"name": "paused"}})
+        self.assertNotIn("Stage", create["properties"])
+        self.assertEqual({r["id"]: r["status"] for r in self.fake.rows}, {"r1": "onboarded", "r2": "needs fix"})
+
+    def test_a_second_run_does_nothing_new(self):
+        poll.poll(self.api, self.cfg, write_builds=True)
+        writes = len(self.fake.writes)
+        out = poll.poll(self.api, self.cfg, write_builds=True)
+        self.assertEqual((out["onboarded"], out["needs_fix"]), ([], []))
+        self.assertEqual(len(self.fake.writes), writes)
+
+    def test_without_write_builds_nothing_reaches_builds(self):
+        poll.poll(self.api, self.cfg)
+        self.assertFalse([w for w in self.fake.writes if w[0] == "create"])
+
+    def test_an_option_the_database_lacks_is_left_out_not_created(self):
+        props, left = notion.props({"Status": "waiting", "Stage": "onboard", "Build": "x"}, BUILDS)
+        self.assertEqual(list(props), ["Build"])
+        self.assertEqual(len(left), 2)
 
 
 class OfferTests(unittest.TestCase):
@@ -254,8 +358,12 @@ class InstallTests(unittest.TestCase):
     def tearDown(self):
         shutil.rmtree(self.tmp)
 
-    def calls(self):
+    def raw(self):
         return [json.loads(l) for l in self.log.read_text().splitlines()] if self.log.exists() else []
+
+    def calls(self):
+        """Each orgo call's arguments, without the stub's KEY marker."""
+        return [c[:-1] for c in self.raw()]
 
     def lock(self):
         p = self.tmp / "engine.lock.json"
@@ -291,6 +399,24 @@ class InstallTests(unittest.TestCase):
         engine = next(c for c in calls if "bash" in c and "sha256sum" in c[-1])
         self.assertIn("v0.0.1", engine[-1])
 
+    def test_btg_key_and_workspace_are_reused_and_never_printed(self):
+        env = self.tmp / "btg.env.local"
+        env.write_text("OPENROUTER_API_KEY=other-secret\nORGO_API_KEY=test-key-not-real\nBOPS_ORGO_WORKSPACE=bops\n")
+        res = install.run(self.folder, str(self.stub), apply=True, yes=True, lock_path=self.lock(), btg_env_path=env)
+        ids = [r["id"] for r in res]
+        self.assertNotIn("btg", ids)
+        self.assertIn("btg_attach", ids)
+        self.assertTrue(all(c[-1] == "KEY=set" for c in self.raw()))
+        calls = self.calls()
+        create = next(c for c in calls if "create" in c)
+        self.assertEqual(create[create.index("--workspace") + 1], "bops")
+        self.assertNotIn("test-key-not-real", json.dumps(res))
+        self.assertNotIn("other-secret", json.dumps(calls))
+
+    def test_without_btg_it_asks_for_it_first(self):
+        steps = install.plan(self.folder, "orgo")
+        self.assertEqual((steps[0]["id"], steps[0]["kind"]), ("btg", "person"))
+
     def test_an_existing_computer_is_reused(self):
         os.environ["ORGO_COMPUTERS"] = json.dumps([{"name": "Reactivation"}])
         res = install.run(self.folder, str(self.stub), apply=True, yes=True, lock_path=self.lock())
@@ -307,7 +433,7 @@ class EndToEndTests(unittest.TestCase):
             res = onboard.onboard(sample(), tmp, readout=EXAMPLE / "readout-stub.txt")
             folder = Path(res["folder"])
             plan = install.plan(folder, "orgo")
-            self.assertEqual(plan[0]["id"], "signed_in")
+            self.assertEqual([s["id"] for s in plan[:2]], ["btg", "signed_in"])
             path = folder / "ledger" / "events.jsonl"
             terms = json.loads((folder / "deliver" / "manifest.json").read_text())["rcm"]["terms"]
             for i, (contact, show) in enumerate([("C1", True), ("C2", False), ("C3", True), ("C4", True),

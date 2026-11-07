@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pay Per Appointment</title>
+<meta name="description" content="An AI agent restarts conversations with everyone in your CRM who went quiet. For the first 90 days you pay only for qualified appointments.">
+<link rel="stylesheet" href="/style.css">
+<script src="/config.js"></script>
+</head>
+<body>
+<main>
+  <h1>Pay only for appointments that happen.</h1>
+  <p class="lede">An AI agent goes through your CRM, finds everyone who asked for a quote or bought once and went quiet, and restarts the conversation one person at a time. When someone's interested, it books them with your team.</p>
+
+  <div class="card">
+    <p class="price"><strong>For the first 90 days, you pay only for qualified appointments.</strong> The person showed up, they're interested, and they fit what you told us you need. Not for leads, and not for no-shows.</p>
+    <p class="price">Put <strong>$500 down</strong>. It's credit toward your appointments.</p>
+    <p class="small">After 90 days, if we both feel good about it, we either move to commission or stay per appointment.</p>
+    <p><a id="pay" class="btn" href="#" aria-disabled="true">Opening soon</a></p>
+    <p class="small">Rather talk first? <a href="https://cal.com/usingaitoscale/aiintegraterz">Book a call with Justin</a>.</p>
+  </div>
+
+  <h2>How it works</h2>
+  <ol>
+    <li>Put your $500 down and answer a short form about your business and your lists.</li>
+    <li>You get one line to paste into Claude Code. It sets up your own Orgo computer and the agents on it, with Better than GrokBot as your window onto them.</li>
+    <li>You sign in to your CRM on that computer's screen. The agents never see your password.</li>
+    <li>You approve the offer and the first messages once. Then the agents restart conversations, answer every reply and book with your team.</li>
+    <li>Each week you get a statement: every appointment, whether it counted, and why.</li>
+  </ol>
+
+  <h2>Your accounts, your data</h2>
+  <p>The agents run on your own computer and your own accounts, and you can watch them work. You pay your computer, AI and texting providers directly. Texts go only to people who agreed to get them in writing.</p>
+</main>
+<script>
+  const link = (window.RCM || {}).paymentLink;
+  const pay = document.getElementById("pay");
+  if (link) { pay.href = link; pay.textContent = "Put $500 down"; pay.removeAttribute("aria-disabled"); }
+  else pay.addEventListener("click", e => e.preventDefault());
+</script>
+</body>
+</html>

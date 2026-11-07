@@ -8,6 +8,7 @@
     rcm ledger <client folder> held|no-show --appt A1 [--evidence <link>]
     rcm ledger <client folder> mark --appt A1 --qualified yes|no [--reason outside_service_area]
     rcm ledger <client folder> settle|statement|review --choice commission
+    rcm poll [--clients <root>] [--write-builds]
     rcm collect <client folder> [--orgo orgo] [--profile <orgo profile>]
 """
 
@@ -47,6 +48,7 @@ def main(argv=None):
     i.add_argument("--profile")
     i.add_argument("--apply", action="store_true")
     i.add_argument("--yes", action="store_true")
+    i.add_argument("--btg-env", help="Better than GrokBot's .env.local: reuse its Orgo key and workspace")
 
     lg = sub.add_parser("ledger")
     lg.add_argument("folder")
@@ -68,6 +70,10 @@ def main(argv=None):
     sg.add_argument("--session", required=True)
     sg.add_argument("--form", required=True)
     sg.add_argument("--out", required=True)
+
+    pl = sub.add_parser("poll")
+    pl.add_argument("--clients", help="Client Builds root (else RCM_CLIENTS_ROOT)")
+    pl.add_argument("--write-builds", action="store_true", help="create or update each client's Builds row in Notion")
 
     c = sub.add_parser("collect")
     c.add_argument("folder")
@@ -94,7 +100,7 @@ def main(argv=None):
         return 0
 
     if a.cmd == "install":
-        for r in install.run(a.folder, a.orgo, a.profile, apply=a.apply, yes=a.yes):
+        for r in install.run(a.folder, a.orgo, a.profile, apply=a.apply, yes=a.yes, btg_env_path=a.btg_env):
             print(f"{r['result']:<18} {r['id']:<16} {r['who']}: {r['note'] or r['proof']}")
         return 0
 
@@ -121,6 +127,18 @@ def main(argv=None):
                 print(json.dumps(ledger.settle(path, terms, at), indent=2))
             else:
                 print(ledger.statement(path, terms, at, label))
+        return 0
+
+    if a.cmd == "poll":
+        from . import notion, poll
+        cfg = poll.config()
+        if a.clients:
+            cfg["RCM_CLIENTS_ROOT"] = a.clients
+        gaps = poll.missing(cfg)
+        if gaps:
+            raise SystemExit("poll needs " + ", ".join(gaps) + " (add-secret NAME, into this repo's .env.local)")
+        api = notion.Api(cfg["NOTION_TOKEN"], cfg["STRIPE_READ_KEY"])
+        print(json.dumps(poll.poll(api, cfg, write_builds=a.write_builds), indent=2))
         return 0
 
     if a.cmd == "collect":

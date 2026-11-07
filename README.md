@@ -7,7 +7,8 @@ Justin, 2026-11-07: "For the most part, though, we want to do it as a reactivati
 ## The line
 
 ```
-signup (Stripe deposit + intake form)  or  readout call (Read AI, then the Factory's spec)
+web/ signup page -> Stripe deposit -> web/ intake page -> POST /api/intake -> a Signups row in Notion
+  -> rcm poll          every new paid row, on a schedule: the rest of this line, no person
   -> rcm signup        the paid session and the form become one intake
   -> rcm onboard       the client's record in the folder system: charters, manifest, ledger, Builds row
   -> rcm pack          the client's own pack for the install email
@@ -28,6 +29,8 @@ signup (Stripe deposit + intake form)  or  readout call (Read AI, then the Facto
 | `gtm/HANDOFF.md` | The offer for the go-to-market sessions |
 | `GO-LIVE.md` | Every gated step, who and what it costs |
 | `rcm/` | The code (Python 3.9+, standard library only) |
+| `web/` | The signup page, the intake page and `POST /api/intake` (a Cloudflare Pages site, not deployed) |
+| `scripts/golive.py` | The Stripe deposit link and the Notion Signups database: printed first, made only on `--apply` |
 
 ## Use it
 
@@ -49,6 +52,17 @@ Test it:
 python3 -m unittest discover tests
 ```
 
+```bash
+cd web && node --test tests/*.test.js
+```
+
 ## State
 
-Built and tested offline: signup, onboarding, the install plan (against a stand-in `orgo`), the ledger and statements. Not live: everything in `GO-LIVE.md`, the engine release above all.
+Built and tested offline:
+- the signup site and its endpoint;
+- the poller, against a stand-in Notion and Stripe;
+- onboarding;
+- the Better than GrokBot install plan, against a stand-in `orgo`;
+- the ledger and statements.
+
+Not live: everything in `GO-LIVE.md`, the engine release above all.

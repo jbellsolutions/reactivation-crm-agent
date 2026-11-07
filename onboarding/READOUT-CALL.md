@@ -1,6 +1,6 @@
 # The readout call: what the recording has to capture
 
-For clients who want to talk first. Justin runs it; Read AI records it. The Factory's spec pass turns the recording into the intake, so every field below has to be said out loud.
+For clients who want to talk first. Justin runs it; Read AI records it. The intake form is still the record of their answers (the Factory keeps emails and phone numbers private, so they can't come from the call). The call is where the questions get answered well.
 
 1. **The business:** its name, what it sells, and the area it serves.
 2. **Who books:** the rep's first name and their booking link. Their calendar must have open slots.

@@ -120,8 +120,9 @@ def builds_row(intake, slug, needs):
         "Build": f"Reactivation: {business}",
         "Client name": client_name,
         "Source ID": f"rcm:{slug}",
-        "Stage": "onboard",
-        "Status": "waiting" if needs else "ready",
+        # Builds' live options (the Factory's note, 2026-11-07): no Stage, because onboarding isn't a build
+        # stage; Status paused while something waits, new when the install can start.
+        "Status": "paused" if needs else "new",
         "Spend": 0,
         "Waiting on": waiting[:1900],
         "Product id": "reactivation-crm-agent",

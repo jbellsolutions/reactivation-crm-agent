@@ -5,7 +5,7 @@ One client is one record in the folder system: `Client Builds/<Business>/`, made
 | # | Stage | Input | Do | Output | Check |
 |---|---|---|---|---|---|
 | 1 | Signup | A paid deposit, or a booked call | Stripe Payment Link; or Cal.com plus Read AI | A paid Checkout session, or a recording in `Recordings/inbox/` | The session is paid at $500 with the agreement accepted (`rcm signup`) |
-| 2 | Intake | The session plus the form row; or the Factory's spec of the call | `rcm signup`; or the Factory spec pass (no tools) | `intake.json` | `intake.validate` returns nothing |
+| 2 | Intake | The session plus the form row, always; a readout call adds context through the Factory | `rcm poll` runs `rcm signup` | `intake.json` | `intake.validate` returns nothing |
 | 3 | Record | `intake.json` | `rcm onboard` | The client folder, charters, manifest, ledger, Builds row, `NEEDS.md` | No template placeholder is left; the manifest parses |
 | 4 | Install line | The record | The approved install email | The client has their one line | The email went through the approved template |
 | 5 | Install | The client's Claude Code, their Orgo account | `kit/INSTALL.md`, `rcm install --apply --yes` | A computer with the engine, charters and profiles, all paused | Every step is `ok` or waits on a person by design |

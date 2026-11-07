@@ -10,28 +10,28 @@ The client pastes their one line from `deliver/INSTALL.md`. Claude Code reads th
 
 Their pack is the zip attached to their install email (`rcm pack`): their charters, their manifest and this install note, and nothing else from their record. Unzip it, then check that `deliver/manifest.json` is there and names their business.
 
-## 1. Better than GrokBot (optional)
+## 1. Better than GrokBot: the window, and where the computer comes from (default)
 
-Ask: "Do you want Better than GrokBot as your window onto the agents?"
-- **If yes:** install it from https://github.com/jbellsolutions/better-than-grokbot (its INSTALL.md), and use its **Sign in with Orgo** to sign in or buy a computer. Its own docs say the install hasn't been proven on a client's Mac yet, so it's optional.
-- **If no:** continue with the Orgo CLI.
+Install Better than GrokBot from https://github.com/jbellsolutions/better-than-grokbot (its INSTALL.md). It needs the client's Orgo key in its `.env.local`:
+- **Already on Orgo:** they make a key at orgo.ai, API keys.
+- **New to Orgo:** they sign up there, pick Starter ($29 a month for one always-on computer, on their own card), then make the key.
 
-## 2. Orgo
+Better than GrokBot's own docs say its install hasn't been proven on a client's Mac yet. If it fails, or the client says no, skip to the Orgo CLI: `orgo login`.
+
+## 2. The plan
 
 ```bash
-bin/rcm install <client folder>
+bin/rcm install <client folder> --btg-env <Better than GrokBot's .env.local>
 ```
 
-That prints the plan. Then:
-- Sign in with `orgo login` (the browser opens; they sign in or sign up).
-- Starter is $29 a month for one always-on computer, on their own card.
+That prints the plan. `--btg-env` reuses the Orgo key and workspace Better than GrokBot already has. The kit reads only those two values and never prints them. The computer is then bought in the same account and workspace, so it shows up in Better than GrokBot.
 
 ## 3. Their computer, the engine, the charters, the agents
 
 Ask for a yes, then:
 
 ```bash
-bin/rcm install <client folder> --apply --yes
+bin/rcm install <client folder> --btg-env <Better than GrokBot's .env.local> --apply --yes
 ```
 
 This does four things:
@@ -61,11 +61,15 @@ orgo computers view Reactivation
 
 They sign in to their CRM in the browser there, MFA included. For GoHighLevel, Attio or Zoho, the engine then asks for a token without send rights, at a hidden prompt.
 
-## 6. The check
+## 6. Show it in Better than GrokBot
+
+In Better than GrokBot: the main agent, Details, Orgo computer, choose **Reactivation**, then **Use this computer**. Now they can watch every screen, and take control if they want.
+
+## 7. The check
 
 The last step of `rcm install` runs the engine's check. Every line passes, or names its fix.
 
-## 7. Approve and go
+## 8. Approve and go
 
 The agents draft the offer and the first messages. The client approves them once, and the first wave goes out.
 

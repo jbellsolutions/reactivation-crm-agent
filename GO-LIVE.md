@@ -1,31 +1,31 @@
 # Go-live: what turns this on, who, and what it costs
 
-Everything below is gated: money, publishing, a remote write, or a decision only Justin makes. The code and the tests don't need any of it.
+Everything below is gated: money, publishing, a remote write, or a decision only Justin makes. The code is built and tested without any of it. Each step names its exact command.
 
-| # | Step | Who | Cost | Unblocks |
+| # | Step | Who | Cost | Command or place |
 |---|---|---|---|---|
-| 1 | Set the price per qualified appointment. Proposed: $100, so the deposit covers five | Justin | None | Terms, statements, the agreement |
-| 2 | Set the commission rate after day 90, and what happens to unused credit | Justin | None | Agreement section 5 |
-| 3 | A lawyer reads the agreement's consent, indemnity and qualified-appointment clauses (or Justin decides not to) | Justin | A lawyer's fee | Publishing the agreement |
-| 4 | The Stripe Payment Link: a $500 deposit, terms of service consent required and pointing at the published agreement, the card saved for top-ups, an after-payment redirect to the intake form | Justin's yes, then Claude | Stripe's fee on each charge, from the deposit | Self-serve signup |
-| 5 | The intake form: a Notion form feeding a Reactivation Signups database, with the field names in `examples/synthetic-client/form-row.json`. The Notion agent in `~/Notion Interface` owns Command Center layout | Justin's yes | None | Self-serve signup |
-| 6 | The signup page on everyoneneedsanaiguy.com, outside the main nav (copy in `offer/SIGNUP.md`) | Justin's yes to deploy | None | Self-serve signup |
-| 7 | The poller: a restricted Stripe key that reads Checkout sessions, and the Notion token, each added with `add-secret`. It runs `rcm signup` and `rcm onboard` on each new paid pair. It belongs on the Factory's box tick or the Our AIOS daily pass | Justin adds the keys | None | Signup to a record with no person |
-| 8 | The engine release: the leads build of the affiliate manager, pinned in `kit/engine.lock.json` | Justin points to its source (plan M1); the Beta session owns that repo | None | The install past its engine step |
-| 9 | A support login: `support@usingaitoscale.com` as a mailbox and a free Orgo account, to accept client workspace invites | Justin (creating accounts is his) | None | Support access and `rcm collect` |
-| 10 | The Factory: a `reactivation` platform in `cb`, and `reactivation-crm-agent` in Notion's product catalog | The Factory session, then the Notion sync | None | Builds rows that link; readout calls to intake |
-| 11 | One shared send gate for all clients (`deploy/gate/` from the affiliate manager, made multi-tenant) | Justin's yes to deploy on Railway | A small fixed monthly cost, not per client | Approved sends |
-| 12 | Better than GrokBot: read its FSL-1.1 licence for use inside a paid offer | Justin | None | Offering it in the install |
-| 13 | The install email template, approved once | Justin | None | Step 4 of onboarding without a person |
-| 14 | The public name, through the Offer session | Justin | None | Page and outreach copy |
-| 15 | How clients reach this kit: make the repo public (only Justin can say "public"), or invite each client through a GitHub organization with Read access | Justin | None | Clients' Claude Code can read `kit/INSTALL.md` |
+| 1 | The price per qualified appointment. Proposed: $100, so the deposit covers five | Justin | None | `offer/offer.json` `price_per_qualified_appointment_usd` |
+| 2 | The commission rate after day 90, and what happens to unused credit | Justin | None | `offer.json`, then agreement section 5 |
+| 3 | A lawyer reads the agreement's consent, indemnity and qualified-appointment clauses (or Justin decides not to) | Justin | A lawyer's fee | `offer/AGREEMENT.md`; it has to be live at a public URL for step 4 |
+| 4 | The Stripe deposit link. Stripe needs a terms URL in its public details first | Justin's yes | Stripe's fee on each charge, from the deposit | `python3 scripts/golive.py stripe --signup-host <host> --apply` (STRIPE_SECRET_KEY), then put the URL in `web/public/config.js` |
+| 5 | The Reactivation Signups database in Notion | Justin's yes | None | `python3 scripts/golive.py notion --parent-page <Command Center page> --apply` (NOTION_TOKEN) |
+| 6 | Deploy the signup site, with three settings | Justin's yes to deploy | None on Cloudflare's free tier | `cd web && npx wrangler pages deploy public --project-name reactivation-signup`. Settings: STRIPE_READ_KEY, NOTION_TOKEN, RCM_SIGNUPS_DS |
+| 7 | The poller's keys, then its schedule (the Factory's box tick or the Our AIOS daily pass) | Justin adds the keys with `add-secret` | None | `.env.local`: NOTION_TOKEN, STRIPE_READ_KEY, RCM_SIGNUPS_DS, RCM_CLIENTS_ROOT. Run `bin/rcm poll --write-builds` |
+| 8 | The engine release: export the affiliate manager into the private `affiliate-os` (decided 10-20), clear the 7FF-specific code the export script lists, add the leads pack and `rcm-engine`, then tag and pin it | Justin's go-ahead and his read of 7FF's NDA | None | `scripts/export_affiliate_os.py` in `funding-affiliate-manager`; then `kit/engine.lock.json` |
+| 9 | A support login: `support@usingaitoscale.com` as a mailbox and a free Orgo account, to accept client workspace invites | Justin (creating accounts is his) | None | |
+| 10 | Builds rows that link: `reactivation-crm-agent` in Notion's Products catalog | Justin's yes (a Notion write); the Factory has a proposed card for the rest | None | The row already uses Builds' live options: no Stage, Status new or paused |
+| 11 | One shared send gate for all clients (`deploy/gate/` from the affiliate manager, made multi-tenant) | Justin's yes to deploy on Railway | A small fixed monthly cost, not per client | |
+| 12 | Read Better than GrokBot's FSL-1.1 licence for use inside a paid offer | Justin | None | |
+| 13 | The install email template, approved once | Justin | None | `factory/outbox/install-email.json` in any record |
+| 14 | The public name, through the Offer session | Justin | None | |
+| 15 | How clients reach this kit: make the repo public (only Justin can say "public"; it holds no client data), or invite each client through a GitHub organization with Read | Justin | None | |
 
 ## Per client, after go-live: all on the client's accounts
 
 | | Client pays | We pay |
 |---|---|---|
-| Orgo computer | $29 a month on their Starter plan, or our Orgo payment link | Nothing |
+| Orgo computer | $29 a month on their Starter plan, bought through Better than GrokBot or Orgo | Nothing |
 | Model | Their OpenRouter key, or Orgo AI at cost | Nothing |
 | Texting and email | Their CRM | Nothing |
-| A signup from the form | Nothing | Nothing |
-| A signup from a readout call | Nothing | The Factory's spec pass, inside its per-stage cap |
+| The signup site and poller | Nothing | Nothing on the free tier |
+| A readout call's context | Nothing | The Factory's capped pass |
