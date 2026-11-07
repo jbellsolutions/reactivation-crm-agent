@@ -111,8 +111,8 @@ def builds_row(intake, slug, needs):
     """The Notion Builds row, in the properties the Factory writes (scripts/factory.py, Writeback)."""
     business = intake_mod.clean(intake["business"], 80)
     full = intake_mod.clean(intake.get("owner_full_name") or "", 80)
-    # The Clients title the Notion sync links on is "Full Name — Business" (references/factory.md).
-    client_name = f"{full} — {business}" if full else business
+    # The Clients title the Notion sync links on is "Full Name, an em dash, Business" (references/factory.md).
+    client_name = f"{full} \u2014 {business}" if full else business
     waiting = "; ".join(n["what"] for n in needs) or "nothing"
     if not full:
         waiting = "the roster sync to add this client; " + waiting
