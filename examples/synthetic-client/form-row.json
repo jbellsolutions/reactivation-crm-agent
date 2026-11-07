@@ -19,5 +19,6 @@
   "plays": "reactivation, lead_radar",
   "orgo_path": "own",
   "has_orgo": false,
-  "model_provider": "openrouter"
+  "model_provider": "openrouter",
+  "agreement_accepted": true
 }

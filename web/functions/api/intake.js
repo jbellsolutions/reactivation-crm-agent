@@ -6,7 +6,7 @@ export const FIELDS = [
   "rep_first_name", "booking_link", "timezone", "qualifying",
   "old_quotes_count", "old_quotes_sms_consent", "past_customers_count", "past_customers_sms_consent",
   "no_shows_count", "no_shows_sms_consent", "lost_deals_count", "lost_deals_sms_consent",
-  "crm_kind", "crm_name", "plays", "orgo_path", "has_orgo", "model_provider", "slack",
+  "crm_kind", "crm_name", "plays", "orgo_path", "has_orgo", "model_provider", "slack", "agreement_accepted",
 ];
 const REQUIRED = ["business", "owner_first_name", "owner_email", "website", "sells", "service_area",
   "booking_link", "timezone", "qualifying", "crm_kind"];
@@ -22,6 +22,7 @@ export function check(form) {
   const problems = REQUIRED.filter(k => !String(form[k] ?? "").trim()).map(k => `missing: ${k}`);
   if (form.owner_email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(form.owner_email)) problems.push("owner_email isn't an email address");
   for (const k of ["website", "booking_link"]) if (form[k] && !String(form[k]).startsWith("https://")) problems.push(`${k} must start with https://`);
+  if (![true, "true", "on", "yes"].includes(form.agreement_accepted)) problems.push("accept the agreement to continue");
   const lists = ["old_quotes", "past_customers", "no_shows", "lost_deals"].filter(l => Number(form[`${l}_count`]) > 0);
   if (!lists.length) problems.push("add at least one list and roughly how many are on it");
   return problems;

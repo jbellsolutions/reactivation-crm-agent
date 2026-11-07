@@ -49,6 +49,7 @@ def main(argv=None):
     i.add_argument("--apply", action="store_true")
     i.add_argument("--yes", action="store_true")
     i.add_argument("--btg-env", help="Better than GrokBot's .env.local: reuse its Orgo key and workspace")
+    i.add_argument("--workspace", help="the Orgo workspace the computer is created in")
 
     lg = sub.add_parser("ledger")
     lg.add_argument("folder")
@@ -100,7 +101,8 @@ def main(argv=None):
         return 0
 
     if a.cmd == "install":
-        for r in install.run(a.folder, a.orgo, a.profile, apply=a.apply, yes=a.yes, btg_env_path=a.btg_env):
+        for r in install.run(a.folder, a.orgo, a.profile, apply=a.apply, yes=a.yes, btg_env_path=a.btg_env,
+                             workspace=a.workspace):
             print(f"{r['result']:<18} {r['id']:<16} {r['who']}: {r['note'] or r['proof']}")
         return 0
 

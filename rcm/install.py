@@ -83,7 +83,7 @@ def charters_payload(folder):
     return base64.b64encode(buf.getvalue()).decode()
 
 
-def plan(folder, orgo="orgo", profile=None, lock_path=ENGINE_LOCK, support_email=SUPPORT_EMAIL, btg=None):
+def plan(folder, orgo="orgo", profile=None, lock_path=ENGINE_LOCK, support_email=SUPPORT_EMAIL, btg=None, workspace=None):
     folder = Path(folder)
     m = json.loads((folder / "deliver" / "manifest.json").read_text())
     name = m["orgo"]["computer_name"]
@@ -91,7 +91,8 @@ def plan(folder, orgo="orgo", profile=None, lock_path=ENGINE_LOCK, support_email
     profiles = m["rcm"]["profiles"]
     lock = engine_lock(lock_path)
     btg = btg or {}
-    where = ["--workspace", btg["BOPS_ORGO_WORKSPACE"]] if btg.get("BOPS_ORGO_WORKSPACE") else []
+    ws = workspace or btg.get("BOPS_ORGO_WORKSPACE")
+    where = ["--workspace", ws] if ws else []
     steps = []
     if not btg.get("ORGO_API_KEY"):
         steps.append({"id": "btg", "kind": "person", "who": "the client", "cmd": None,
@@ -114,13 +115,13 @@ def plan(folder, orgo="orgo", profile=None, lock_path=ENGINE_LOCK, support_email
     ]
     payload = charters_payload(folder)
     steps.append({"id": "charters", "kind": "asks", "who": "kit, on the client's yes",
-                  "cmd": base + ["computers", "bash", name, "-c",
+                  "cmd": base + ["computers", "bash", name] + where + ["--timeout", "1800", "-c",
                                  f"mkdir -p /root/.rcm && echo {payload} | base64 -d | tar -xz -C /root/.rcm"],
                   "proof": "/root/.rcm holds the manifest, the project charter, the agent charter and each profile's"})
     blob = engine_blob(folder, lock) if lock and lock.get("bundle") == "pack" else None
     if blob:
         b64 = base64.b64encode(blob).decode()
-        sh = lambda c: base + ["computers", "bash", name, "-c", c]
+        sh = lambda c: base + ["computers", "bash", name] + where + ["--timeout", "1800", "-c", c]
         cmds = [sh("rm -f /root/rcm-engine.b64")]
         cmds += [sh(f"printf %s {b64[i:i + CHUNK]} >> /root/rcm-engine.b64") for i in range(0, len(b64), CHUNK)]
         cmds.append(sh(f"set -e; base64 -d /root/rcm-engine.b64 > /root/rcm-engine.tar.gz"
@@ -134,7 +135,7 @@ def plan(folder, orgo="orgo", profile=None, lock_path=ENGINE_LOCK, support_email
                   f" -o /root/rcm-engine.sh && echo '{lock['sha256']}  /root/rcm-engine.sh' | sha256sum -c -"
                   f" && bash /root/rcm-engine.sh --client {m['client']}")
         steps.append({"id": "engine", "kind": "asks", "who": "kit, on the client's yes",
-                      "cmd": base + ["computers", "bash", name, "-c", script],
+                      "cmd": base + ["computers", "bash", name] + where + ["--timeout", "1800", "-c", script],
                       "proof": "the release's own installer passes its checksum and its check"})
     else:
         steps.append({"id": "engine", "kind": "blocked", "who": "Justin", "cmd": None,
@@ -143,7 +144,7 @@ def plan(folder, orgo="orgo", profile=None, lock_path=ENGINE_LOCK, support_email
         return steps
     installable = [p for p in profiles if p in ENGINE_NAMES]
     steps.append({"id": "profiles", "kind": "asks", "who": "kit, on the client's yes",
-                  "cmd": base + ["computers", "bash", name, "-c",
+                  "cmd": base + ["computers", "bash", name] + where + ["--timeout", "1800", "-c",
                                  " && ".join(f"rcm-engine profile {p} --charter /root/.rcm/charters/profiles/{p}/CHARTER.md --paused"
                                              for p in installable)],
                   "proof": f"{len(installable)} profiles installed, every scheduled job paused: {', '.join(installable)}"})
@@ -165,19 +166,19 @@ def plan(folder, orgo="orgo", profile=None, lock_path=ENGINE_LOCK, support_email
          "proof": f"Better than GrokBot's main agent uses {name!r}, so the client watches it there",
          "how": f"In Better than GrokBot: the main agent, Details, Orgo computer, choose {name!r}, Use this computer"},
         {"id": "check", "kind": "asks", "who": "kit",
-         "cmd": base + ["computers", "bash", name, "-c", f"rcm-engine check --client {m['client']}"],
+         "cmd": base + ["computers", "bash", name] + where + ["--timeout", "1800", "-c", f"rcm-engine check --client {m['client']}"],
          "proof": "every line passes: memory, profiles, CRM token without send rights, gate, consent, STOP"},
     ]
     return steps
 
 
 def run(folder, orgo="orgo", profile=None, apply=False, yes=False, runner=subprocess.run,
-        lock_path=ENGINE_LOCK, btg_env_path=None):
+        lock_path=ENGINE_LOCK, btg_env_path=None, workspace=None):
     """Walk the plan. Returns one result per step; never runs an `asks` step without yes."""
     results, seen = [], {}
     btg = btg_env(btg_env_path)
     env = {**os.environ, **btg} if btg.get("ORGO_API_KEY") else None
-    for s in plan(folder, orgo, profile, lock_path, btg=btg):
+    for s in plan(folder, orgo, profile, lock_path, btg=btg, workspace=workspace):
         if s.get("skip_if") and seen.get(s["skip_if"]):
             results.append({**s, "result": "skipped", "note": "already there"})
             continue

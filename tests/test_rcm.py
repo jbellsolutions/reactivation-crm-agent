@@ -74,10 +74,14 @@ class SignupTests(unittest.TestCase):
 
     def test_unpaid_wrong_amount_or_no_consent_is_refused(self):
         form = self.load("form-row.json")
-        for change in ({"payment_status": "unpaid"}, {"amount_total": 100}, {"consent": {}}):
+        for change in ({"payment_status": "unpaid"}, {"amount_total": 100}):
             s = {**self.load("checkout-session.json"), **change}
             with self.assertRaises(signup.SignupError):
                 signup.intake_from(s, form, offer.load())
+        no_consent = {**self.load("checkout-session.json"), "consent": {}}
+        signup.intake_from(no_consent, form, offer.load())
+        with self.assertRaises(signup.SignupError):
+            signup.intake_from(no_consent, {**form, "agreement_accepted": False}, offer.load())
 
     def test_email_must_match(self):
         form = {**self.load("form-row.json"), "owner_email": "someone@example.org"}

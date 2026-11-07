@@ -24,13 +24,14 @@ class SignupError(ValueError):
     pass
 
 
-def deposit_from_session(session, deposit_usd):
+def deposit_from_session(session, deposit_usd, form_accepted=False):
     if session.get("payment_status") != "paid":
         raise SignupError("the deposit session isn't paid")
     if int(session.get("amount_total") or 0) != int(round(deposit_usd * 100)):
         raise SignupError(f"the session charged {session.get('amount_total')} cents, not the ${deposit_usd:,.0f} deposit")
-    if ((session.get("consent") or {}).get("terms_of_service")) != "accepted":
-        raise SignupError("the agreement wasn't accepted at checkout")
+    # The agreement is accepted at checkout (Stripe's terms consent) or on the intake form; either one counts.
+    if ((session.get("consent") or {}).get("terms_of_service")) != "accepted" and not form_accepted:
+        raise SignupError("the agreement wasn't accepted, at checkout or on the intake form")
     paid_at = dt.datetime.fromtimestamp(int(session["created"]), dt.timezone.utc).isoformat()
     return {"paid": True, "paid_at": paid_at, "ref": session["id"]}
 
@@ -68,7 +69,7 @@ def intake_from(session, form, offer):
         "model": {"provider": form.get("model_provider") or "openrouter"},
         "slack": bool(form.get("slack")),
         "agreement": {"accepted": True, "version": offer["version"], "ref": session["id"]},
-        "deposit": deposit_from_session(session, offer["deposit_usd"]),
+        "deposit": deposit_from_session(session, offer["deposit_usd"], form.get("agreement_accepted") in (True, "true", "on", "yes")),
         "source": "self-serve",
     }
     problems = intake_mod.validate(out)

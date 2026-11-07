@@ -42,7 +42,7 @@ def stripe_calls(host):
         ("prices", {"product": "{product}", "currency": "usd", "unit_amount": str(cents)}),
         ("payment_links", {
             "line_items[0][price]": "{price}", "line_items[0][quantity]": "1",
-            "consent_collection[terms_of_service]": "required",
+            "custom_text[submit][message]": f"By paying you accept the agreement at https://{host}/terms/ and confirm it on the next page.",
             "payment_intent_data[setup_future_usage]": "off_session",
             "customer_creation": "always",
             "after_completion[type]": "redirect",
@@ -80,7 +80,6 @@ def main(argv=None):
         calls = stripe_calls(a.signup_host)
         if not a.apply:
             print(json.dumps([{"POST": f"/v1/{p}", "form": d} for p, d in calls], indent=2))
-            print("\nNote: terms of service consent needs a terms URL in Stripe's public details first.", file=sys.stderr)
             return 0
         key = env("STRIPE_SECRET_KEY")
         h = {"Authorization": f"Bearer {key}"}
