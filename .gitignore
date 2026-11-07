@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+.env
+.env.local
+private/
+clients/
+*.zip
+node_modules/
+.wrangler/
+dist/
+state/

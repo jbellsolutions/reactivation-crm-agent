@@ -1,0 +1,25 @@
+{
+  "_comment": "A made-up client for tests and demos. No real business, person or contact.",
+  "business": "Harbor Test Roofing",
+  "owner_first_name": "Dana",
+  "owner_email": "dana@example.com",
+  "website": "https://example.com",
+  "sells": "Roof replacement and repair for homeowners",
+  "service_area": "Tampa Bay, Florida",
+  "rep_first_name": "Sam",
+  "booking_link": "https://cal.com/example/roof-check",
+  "timezone": "America/New_York",
+  "qualifying": ["Owns the home", "Inside the service area", "Roof is 10 years or older"],
+  "lists": [
+    {"type": "old_quotes", "source": "ghl", "approx_count": 1800, "sms_consent": "yes"},
+    {"type": "past_customers", "source": "ghl", "approx_count": 600, "sms_consent": "unknown"}
+  ],
+  "crm": {"kind": "ghl", "name": "GoHighLevel"},
+  "plays": ["reactivation", "lead_radar"],
+  "orgo": {"path": "own", "has_account": false},
+  "model": {"provider": "openrouter"},
+  "slack": false,
+  "agreement": {"accepted": true, "version": "2026-11-07"},
+  "agreed": {"price_per_appointment_usd": 100},
+  "deposit": {"paid": true, "paid_at": "2026-11-07T15:00:00+00:00", "ref": "test-deposit-0001"}
+}

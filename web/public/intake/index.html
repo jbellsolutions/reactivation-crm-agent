@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Your Business</title>
+<meta name="description" content="The intake after your deposit: what the agents need to work your CRM.">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<main>
+  <h1>Tell the agents about your business</h1>
+  <p class="lede">This is everything they need. Use the email you paid the deposit with.</p>
+
+  <form id="f" novalidate>
+    <label for="business">Business name</label><input id="business" name="business" required>
+    <div class="row">
+      <div><label for="owner_first_name">Your first name</label><input id="owner_first_name" name="owner_first_name" required></div>
+      <div><label for="owner_email">Your email</label><input id="owner_email" name="owner_email" type="email" required></div>
+    </div>
+    <label for="website">Website</label><input id="website" name="website" type="url" placeholder="https://" required>
+    <label for="sells">What you sell</label><input id="sells" name="sells" required>
+    <label for="service_area">Where you serve</label><input id="service_area" name="service_area" required>
+    <div class="row">
+      <div><label for="rep_first_name">Who takes the appointments (first name)</label><input id="rep_first_name" name="rep_first_name"></div>
+      <div><label for="booking_link">Their booking link</label><input id="booking_link" name="booking_link" type="url" placeholder="https://" required></div>
+    </div>
+    <label for="timezone">Time zone</label><input id="timezone" name="timezone" placeholder="America/New_York" required>
+    <label for="qualifying">What makes an appointment qualified? One per line</label>
+    <textarea id="qualifying" name="qualifying" placeholder="Owns the home&#10;Inside our service area" required></textarea>
+
+    <h2>Your lists</h2>
+    <p class="small">Roughly how many are on each, and did they agree in writing to get texts? Anything that isn't a clear yes gets email only.</p>
+    <div class="row">
+      <div><label for="old_quotes_count">Old quotes</label><input id="old_quotes_count" name="old_quotes_count" type="number" min="0"></div>
+      <div><label for="old_quotes_sms_consent">Text consent</label><select id="old_quotes_sms_consent" name="old_quotes_sms_consent"><option>unknown</option><option>yes</option><option>no</option></select></div>
+      <div><label for="past_customers_count">Past customers</label><input id="past_customers_count" name="past_customers_count" type="number" min="0"></div>
+      <div><label for="past_customers_sms_consent">Text consent</label><select id="past_customers_sms_consent" name="past_customers_sms_consent"><option>unknown</option><option>yes</option><option>no</option></select></div>
+      <div><label for="no_shows_count">No-shows</label><input id="no_shows_count" name="no_shows_count" type="number" min="0"></div>
+      <div><label for="no_shows_sms_consent">Text consent</label><select id="no_shows_sms_consent" name="no_shows_sms_consent"><option>unknown</option><option>yes</option><option>no</option></select></div>
+      <div><label for="lost_deals_count">Lost deals</label><input id="lost_deals_count" name="lost_deals_count" type="number" min="0"></div>
+      <div><label for="lost_deals_sms_consent">Text consent</label><select id="lost_deals_sms_consent" name="lost_deals_sms_consent"><option>unknown</option><option>yes</option><option>no</option></select></div>
+    </div>
+
+    <h2>Your tools</h2>
+    <div class="row">
+      <div><label for="crm_kind">Your CRM</label><select id="crm_kind" name="crm_kind"><option value="ghl">GoHighLevel</option><option value="attio">Attio</option><option value="zoho">Zoho</option><option value="other">Something else</option></select></div>
+      <div><label for="crm_name">If something else, which?</label><input id="crm_name" name="crm_name"></div>
+      <div><label for="orgo_path">Your Orgo computer</label><select id="orgo_path" name="orgo_path"><option value="own">I'll use my own Orgo account (or buy one at install)</option><option value="invoicing">Bill me through you</option></select></div>
+      <div><label for="model_provider">AI for the agents</label><select id="model_provider" name="model_provider"><option value="openrouter">My own OpenRouter key</option><option value="orgo-ai">Orgo's AI credit</option></select></div>
+    </div>
+    <label><input type="checkbox" name="lead_radar" style="width:auto"> Also find new people asking for what I sell on socials and in groups (Lead Radar)</label>
+
+    <p><button class="btn" type="submit">Send</button></p>
+    <div id="msg" class="msg" role="status"></div>
+  </form>
+</main>
+<script>
+  const f = document.getElementById("f"), msg = document.getElementById("msg");
+  const sid = new URLSearchParams(location.search).get("session_id") || "";
+  if (!sid) { msg.className = "msg err"; msg.textContent = "Open this page from the link in your deposit receipt."; }
+  f.addEventListener("submit", async e => {
+    e.preventDefault();
+    const d = Object.fromEntries(new FormData(f));
+    d.plays = d.lead_radar ? "reactivation, lead_radar" : "reactivation"; delete d.lead_radar;
+    d.session_id = sid;
+    msg.className = "msg"; msg.textContent = "";
+    const r = await fetch("/api/intake", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(d) });
+    const out = await r.json().catch(() => ({}));
+    if (r.ok) { msg.className = "msg ok"; msg.textContent = "Got it. Your install email is on its way."; f.querySelector("button").disabled = true; }
+    else { msg.className = "msg err"; msg.textContent = [out.error, ...(out.problems || [])].filter(Boolean).join(" "); }
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,25 @@
+:root { --bg: #fbfaf7; --ink: #16181d; --muted: #5b616e; --line: #e4e1da; --accent: #0f5f4f; --accent-ink: #fff; --card: #fff; }
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #111317; --ink: #eceae4; --muted: #a3a8b3; --line: #2a2e36; --accent: #3fb59a; --accent-ink: #0b0d10; --card: #171a1f; }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 17px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif; }
+main { max-width: 720px; margin: 0 auto; padding: 48px 16px 80px; }
+h1 { font-size: 2.1rem; line-height: 1.15; margin: 0 0 16px; letter-spacing: -0.01em; }
+h2 { font-size: 1.2rem; margin: 40px 0 8px; }
+p, li { color: var(--ink); }
+a { color: var(--accent); }
+.lede { font-size: 1.15rem; color: var(--muted); }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 20px; margin: 24px 0; }
+.price { font-size: 1.05rem; }
+.btn { display: inline-block; background: var(--accent); color: var(--accent-ink); border: 0; border-radius: 10px; padding: 14px 22px; font-weight: 600; font-size: 1rem; text-decoration: none; cursor: pointer; }
+.btn[aria-disabled="true"], .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.small { font-size: 0.9rem; color: var(--muted); }
+label { display: block; font-weight: 600; margin: 18px 0 6px; }
+input, select, textarea { width: 100%; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--card); color: var(--ink); font: inherit; }
+textarea { min-height: 96px; }
+.row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (max-width: 560px) { .row { grid-template-columns: 1fr; } h1 { font-size: 1.7rem; } }
+.msg { margin-top: 16px; padding: 12px 14px; border-radius: 8px; display: none; }
+.msg.ok { display: block; background: color-mix(in srgb, var(--accent) 15%, transparent); }
+.msg.err { display: block; background: color-mix(in srgb, #c0392b 15%, transparent); }

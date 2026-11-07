@@ -1,0 +1,80 @@
+#!/usr/bin/env bash
+# rcm-engine: the engine's three commands on the client's computer (kit/ENGINE-CONTRACT.md).
+#   rcm-engine profile <reactivation|reply|sales|deal> --charter <path> --paused
+#   rcm-engine keys      (hidden prompts: CRM key and location, model key; nothing is echoed)
+#   rcm-engine check --client <slug>
+set -euo pipefail
+GTM_HOME="${GTM_HOME:-/root/.rcm}"
+HERMES_HOME="${HERMES_HOME:-$HOME/.hermes}"
+
+engine_name() {
+  case "$1" in
+    reactivation) echo opener ;; reply) echo replies ;; sales) echo closer ;; deal) echo deals ;;
+    *) echo "unknown profile $1" >&2; exit 2 ;;
+  esac
+}
+
+cmd="${1:-}"; shift || true
+case "$cmd" in
+  profile)
+    kit="$1"; shift; charter=""
+    while [ $# -gt 0 ]; do case "$1" in --charter) charter="$2"; shift 2 ;; *) shift ;; esac; done
+    name="$(engine_name "$kit")"
+    src="$GTM_HOME/build/$name"
+    [ -d "$src" ] || { echo "no rendered profile at $src: run the engine's install.sh first" >&2; exit 2; }
+    if [ -d "$HERMES_HOME/profiles/$name" ]; then
+      hermes profile install "$src" --name "$name" --force -y
+    else
+      hermes profile install "$src" --name "$name" --alias -y
+    fi
+    if [ -n "$charter" ] && [ -f "$charter" ]; then
+      cp "$charter" "$HERMES_HOME/profiles/$name/CHARTER.md"
+      grep -q 'CHARTER.md' "$HERMES_HOME/profiles/$name/SOUL.md" 2>/dev/null || \
+        printf '\n\nRead CHARTER.md in this profile first: it is this business'"'"'s charter for you.\n' >> "$HERMES_HOME/profiles/$name/SOUL.md"
+    fi
+    hermes -p "$name" cron list >/dev/null 2>&1 || true
+    echo "$kit -> $name installed, jobs paused"
+    ;;
+  keys)
+    umask 077
+    read -r -s -p "CRM (GoHighLevel) private integration key: " ghl; echo
+    read -r -p "GoHighLevel location id: " loc
+    read -r -s -p "Model key (Anthropic): " model; echo
+    for name in opener replies closer deals; do
+      env="$HERMES_HOME/profiles/$name/.env"
+      [ -d "$(dirname "$env")" ] || continue
+      # The profiles reach the model only through the spend guard, which alone holds the real key.
+      { echo "GHL_API_KEY=$ghl"; echo "GHL_LOCATION_ID=$loc"; echo "GTM_HOME=$GTM_HOME";
+        echo "ANTHROPIC_API_KEY=sk-ant-held-by-the-gate"; echo "ANTHROPIC_BASE_URL=http://127.0.0.1:8788"; } > "$env"
+    done
+    printf 'ANTHROPIC_API_KEY=%s\n' "$model" > "$GTM_HOME/box.env"
+    supervisorctl restart rcm-spend-guard >/dev/null 2>&1 || true
+    python3 - "$GTM_HOME/box/crm-map.json" "$loc" <<'PY'
+import json, sys
+p, loc = sys.argv[1], sys.argv[2]
+m = json.load(open(p)); m["location"] = loc; json.dump(m, open(p, "w"), indent=2)
+PY
+    unset ghl model
+    echo "keys written to each profile's .env (mode 600); nothing was printed"
+    ;;
+  check)
+    client=""
+    while [ $# -gt 0 ]; do case "$1" in --client) client="$2"; shift 2 ;; *) shift ;; esac; done
+    fail=0
+    pass() { echo "pass  $1"; }
+    miss() { echo "FAIL  $1: $2"; fail=1; }
+    [ -f "$GTM_HOME/ENGINE.json" ] && pass "engine installed" || miss "engine" "run install.sh"
+    for name in opener replies closer deals; do
+      [ -d "$HERMES_HOME/profiles/$name" ] && pass "profile $name" || miss "profile $name" "rcm-engine profile"
+      [ -f "$HERMES_HOME/profiles/$name/.env" ] && pass "keys for $name" || miss "keys for $name" "rcm-engine keys"
+    done
+    loc="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1])).get("location",""))' "$GTM_HOME/box/crm-map.json" 2>/dev/null || true)"
+    [ -n "$loc" ] && pass "CRM location set" || miss "CRM location" "rcm-engine keys"
+    [ ! -f "$GTM_HOME/crm/WRITES_ON" ] && pass "drafts only (writes off until the owner approves)" || echo "note  CRM writes are on"
+    [ -f "$GTM_HOME/manifest.json" ] && pass "manifest for ${client:-this client}" || miss "manifest" "the kit's charters step"
+    [ ! -f "$GTM_HOME/STOP" ] && pass "not stopped" || echo "note  STOP is set: nothing goes out"
+    exit "$fail"
+    ;;
+  *)
+    sed -n '2,6p' "$0"; exit 2 ;;
+esac

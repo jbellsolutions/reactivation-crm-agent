@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# The rcm command, from anywhere: bin/rcm <command> ...
+HERE="$(cd "$(dirname "$0")/.." && pwd)"
+PYTHONPATH="$HERE${PYTHONPATH:+:$PYTHONPATH}" exec python3 -m rcm.cli "$@"
