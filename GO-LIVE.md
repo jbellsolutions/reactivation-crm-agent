@@ -3,7 +3,7 @@
 Justin's answers of 2026-11-07:
 - **Price:** custom per person and niche.
 - **Go-live writes:** all four approved (the Notion database, the Stripe link, deploying the site, the poller and its schedule).
-- **Engine:** the CRM team already built for this; 7FF untouched.
+- **Engine:** the CRM team already built for this; no client's repo or computer touched.
 - **Kit:** public.
 
 | # | Step | State | Who | Cost |
