@@ -7,3 +7,5 @@ clients/
 *.zip
 node_modules/
 .wrangler/
+dist/
+state/

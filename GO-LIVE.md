@@ -1,31 +1,66 @@
-# Go-live: what turns this on, who, and what it costs
+# Go-live: what's on, what's left, and who
 
-Everything below is gated: money, publishing, a remote write, or a decision only Justin makes. The code is built and tested without any of it. Each step names its exact command.
+Justin's answers of 2026-11-07:
+- **Price:** custom per person and niche.
+- **Go-live writes:** all four approved (the Notion database, the Stripe link, deploying the site, the poller and its schedule).
+- **Engine:** the CRM team already built for this; 7FF untouched.
+- **Kit:** public.
 
-| # | Step | Who | Cost | Command or place |
+| # | Step | State | Who | Cost |
 |---|---|---|---|---|
-| 1 | The price per qualified appointment. Proposed: $100, so the deposit covers five | Justin | None | `offer/offer.json` `price_per_qualified_appointment_usd` |
-| 2 | The commission rate after day 90, and what happens to unused credit | Justin | None | `offer.json`, then agreement section 5 |
-| 3 | A lawyer reads the agreement's consent, indemnity and qualified-appointment clauses (or Justin decides not to) | Justin | A lawyer's fee | `offer/AGREEMENT.md`; it has to be live at a public URL for step 4 |
-| 4 | The Stripe deposit link. Stripe needs a terms URL in its public details first | Justin's yes | Stripe's fee on each charge, from the deposit | `python3 scripts/golive.py stripe --signup-host <host> --apply` (STRIPE_SECRET_KEY), then put the URL in `web/public/config.js` |
-| 5 | The Reactivation Signups database in Notion | Justin's yes | None | `python3 scripts/golive.py notion --parent-page <Command Center page> --apply` (NOTION_TOKEN) |
-| 6 | Deploy the signup site, with three settings | Justin's yes to deploy | None on Cloudflare's free tier | `cd web && npx wrangler pages deploy public --project-name reactivation-signup`. Settings: STRIPE_READ_KEY, NOTION_TOKEN, RCM_SIGNUPS_DS |
-| 7 | The poller's keys, then its schedule (the Factory's box tick or the Our AIOS daily pass) | Justin adds the keys with `add-secret` | None | `.env.local`: NOTION_TOKEN, STRIPE_READ_KEY, RCM_SIGNUPS_DS, RCM_CLIENTS_ROOT. Run `bin/rcm poll --write-builds` |
-| 8 | The engine release: export the affiliate manager into the private `affiliate-os` (decided 10-20), clear the 7FF-specific code the export script lists, add the leads pack and `rcm-engine`, then tag and pin it | Justin's go-ahead and his read of 7FF's NDA | None | `scripts/export_affiliate_os.py` in `funding-affiliate-manager`; then `kit/engine.lock.json` |
-| 9 | A support login: `support@usingaitoscale.com` as a mailbox and a free Orgo account, to accept client workspace invites | Justin (creating accounts is his) | None | |
-| 10 | Builds rows that link: `reactivation-crm-agent` in Notion's Products catalog | Justin's yes (a Notion write); the Factory has a proposed card for the rest | None | The row already uses Builds' live options: no Stage, Status new or paused |
-| 11 | One shared send gate for all clients (`deploy/gate/` from the affiliate manager, made multi-tenant) | Justin's yes to deploy on Railway | A small fixed monthly cost, not per client | |
-| 12 | Read Better than GrokBot's FSL-1.1 licence for use inside a paid offer | Justin | None | |
-| 13 | The install email template, approved once | Justin | None | `factory/outbox/install-email.json` in any record |
-| 14 | The public name, through the Offer session | Justin | None | |
-| 15 | How clients reach this kit: make the repo public (only Justin can say "public"; it holds no client data), or invite each client through a GitHub organization with Read | Justin | None | |
+| 1 | Price per qualified appointment | **Custom per client.** Justin fills Price in the client's Signups row; until then the record waits as `needs price` and the deposit isn't opened | Justin, per client | None |
+| 2 | Commission rate after day 90, and unused credit | Open | Justin | None |
+| 3 | A lawyer's read of the agreement (`offer/AGREEMENT.md`, published at `/terms/`) | Open | Justin | A lawyer's fee |
+| 4 | The Stripe deposit link | **Approved.** Waits on `STRIPE_SECRET_KEY`, and Stripe needs a terms URL in its public details (the site's `/terms/` page) | Justin adds the key; `scripts/go-live.sh` makes it | Stripe's fee per charge |
+| 5 | The Reactivation Signups database | **Done.** Under Command Center, data source `129d16fc-c867-4e30-b7e9-30633c302ba2`, with Price for custom pricing | | None |
+| 6 | The signup site (`reactivation-signup` on Cloudflare Pages: offer, intake, terms, `/api/intake`) | **Approved.** Waits on `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`, plus the site's own `STRIPE_READ_KEY` and `NOTION_TOKEN` | Justin adds the keys; `scripts/go-live.sh` deploys | Free tier |
+| 7 | The poller and its schedule | **Approved.** `scripts/install-poller.sh` runs `rcm poll --write-builds` every 15 minutes. It waits on `NOTION_TOKEN` and `STRIPE_READ_KEY` and does nothing without them | Justin adds the keys | None |
+| 8 | The engine: the CRM team (opener, replies, closer, deals), packaged by `scripts/build_engine.py`, pinned in `kit/engine.lock.json`, carried in each client's pack | **Built and tested offline.** Not yet run on a client's computer | The first client's install proves it | None |
+| 9 | A support login: `support@usingaitoscale.com` and a free Orgo account, to accept client workspace invites | Open | Justin (creating accounts is his) | None |
+| 10 | `reactivation-crm-agent` in the Products catalog (`products/catalog.json` in client-build-system, which the Notion sync reads) | Requested from the AIOS client build system session | That session | None |
+| 11 | Sending: drafts go through the guarded sender, as the CRM team's do | Already deployed (test mode) | Justin approves each draft type once | Fixed, not per client |
+| 12 | Better than GrokBot's FSL-1.1 licence, for use inside a paid offer | Open | Justin | None |
+| 13 | The install email template, approved once | Open | Justin | None |
+| 14 | The public name | Open, through the Offer session | Justin | None |
+| 15 | The kit public | **Approved** | | None |
+
+## The keys, once, from this folder
+
+```bash
+cd ~/REPOS/reactivation-crm-agent
+```
+
+```bash
+add-secret STRIPE_SECRET_KEY
+```
+
+```bash
+add-secret STRIPE_READ_KEY
+```
+
+```bash
+add-secret NOTION_TOKEN
+```
+
+```bash
+add-secret CLOUDFLARE_API_TOKEN
+```
+
+```bash
+add-secret CLOUDFLARE_ACCOUNT_ID
+```
+
+Then the rest is one command (it stops at the first step that can't run, and says why):
+
+```bash
+bash scripts/go-live.sh
+```
 
 ## Per client, after go-live: all on the client's accounts
 
 | | Client pays | We pay |
 |---|---|---|
 | Orgo computer | $29 a month on their Starter plan, bought through Better than GrokBot or Orgo | Nothing |
-| Model | Their OpenRouter key, or Orgo AI at cost | Nothing |
+| Model | Their own key, behind the engine's daily spend guard | Nothing |
 | Texting and email | Their CRM | Nothing |
 | The signup site and poller | Nothing | Nothing on the free tier |
-| A readout call's context | Nothing | The Factory's capped pass |

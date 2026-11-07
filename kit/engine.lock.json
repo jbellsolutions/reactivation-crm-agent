@@ -1,6 +1,10 @@
 {
-  "_comment": "The engine release the install pins. Empty until the leads build of the affiliate manager is released (plan M1). See kit/ENGINE-CONTRACT.md.",
+  "_comment": "The engine the install pins: built by scripts/build_engine.py from the GTM box's CRM team, carried in each client's pack (rcm pack), checked by sha256 on the computer.",
+  "bundle": "pack",
+  "file": "engine.tar.gz",
+  "version": "0.1.0+984170d",
+  "sha256": "0fa8562d5c9ccdd6b2d32c235d5fe5fd6e24b6f03a272fe9aa1c0616e80363e5",
+  "source": "jbellsolutions/our-aios agents/gtm-box@984170d",
   "repo": "",
-  "tag": "",
-  "sha256": ""
+  "tag": ""
 }

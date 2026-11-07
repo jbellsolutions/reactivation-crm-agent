@@ -20,6 +20,7 @@ printed.
 """
 
 import base64
+import hashlib
 import io
 import json
 import os
@@ -33,10 +34,28 @@ COMPUTER = {"ram": "8", "cpu": "2", "disk": "40"}
 SUPPORT_EMAIL = "support@usingaitoscale.com"
 
 
+ENGINE_NAMES = {"reactivation": "opener", "reply": "replies", "sales": "closer", "deal": "deals"}
+CHUNK = 60_000
+
+
 def engine_lock(path=ENGINE_LOCK):
+    """The pinned engine: a release (repo, tag, sha256), or a bundle carried in the client's pack (file, sha256)."""
     p = Path(path)
     lock = json.loads(p.read_text()) if p.exists() else {}
+    if lock.get("bundle") == "pack" and lock.get("file") and lock.get("sha256"):
+        return lock
     return lock if lock.get("repo") and lock.get("tag") and lock.get("sha256") else None
+
+
+def engine_blob(folder, lock):
+    """The engine tarball from the client's pack, or this repo's dist/, only if its sha256 matches the pin."""
+    from .offer import ROOT
+    for f in (Path(folder) / "deliver" / "engine" / lock["file"], ROOT / "dist" / lock["file"]):
+        if f.exists():
+            blob = f.read_bytes()
+            if hashlib.sha256(blob).hexdigest() == lock["sha256"]:
+                return blob
+    return None
 
 
 BTG_KEYS = ("ORGO_API_KEY", "BOPS_ORGO_WORKSPACE")
@@ -93,7 +112,24 @@ def plan(folder, orgo="orgo", profile=None, lock_path=ENGINE_LOCK, support_email
          "proof": "Starter's one always-on Medium: 8 GB, 2 vCPU, 40 GB, on the client's own plan",
          "skip_if": "computer_exists"},
     ]
-    if lock:
+    payload = charters_payload(folder)
+    steps.append({"id": "charters", "kind": "asks", "who": "kit, on the client's yes",
+                  "cmd": base + ["computers", "bash", name, "-c",
+                                 f"mkdir -p /root/.rcm && echo {payload} | base64 -d | tar -xz -C /root/.rcm"],
+                  "proof": "/root/.rcm holds the manifest, the project charter, the agent charter and each profile's"})
+    blob = engine_blob(folder, lock) if lock and lock.get("bundle") == "pack" else None
+    if blob:
+        b64 = base64.b64encode(blob).decode()
+        sh = lambda c: base + ["computers", "bash", name, "-c", c]
+        cmds = [sh("rm -f /root/rcm-engine.b64")]
+        cmds += [sh(f"printf %s {b64[i:i + CHUNK]} >> /root/rcm-engine.b64") for i in range(0, len(b64), CHUNK)]
+        cmds.append(sh(f"set -e; base64 -d /root/rcm-engine.b64 > /root/rcm-engine.tar.gz"
+                       f" && echo '{lock['sha256']}  /root/rcm-engine.tar.gz' | sha256sum -c -"
+                       f" && rm -rf /root/rcm-engine /root/engine && tar -xzf /root/rcm-engine.tar.gz -C /root"
+                       f" && mv /root/engine /root/rcm-engine && bash /root/rcm-engine/install.sh --client {m['client']}"))
+        steps.append({"id": "engine", "kind": "asks", "who": "kit, on the client's yes", "cmds": cmds,
+                      "proof": f"engine {lock.get('version', '')} passes its sha256 on the computer and installs"})
+    elif lock and lock.get("repo"):
         script = (f"set -e; curl -fsSL https://github.com/{lock['repo']}/releases/download/{lock['tag']}/install.sh"
                   f" -o /root/rcm-engine.sh && echo '{lock['sha256']}  /root/rcm-engine.sh' | sha256sum -c -"
                   f" && bash /root/rcm-engine.sh --client {m['client']}")
@@ -101,20 +137,24 @@ def plan(folder, orgo="orgo", profile=None, lock_path=ENGINE_LOCK, support_email
                       "cmd": base + ["computers", "bash", name, "-c", script],
                       "proof": "the release's own installer passes its checksum and its check"})
     else:
-        steps.append({"id": "engine", "kind": "blocked", "who": "Justin",
-                      "cmd": None, "proof": "an engine release is pinned in kit/engine.lock.json",
-                      "if_fails": "no engine release yet: the leads build of the affiliate manager (plan M1)"})
-    payload = charters_payload(folder)
+        steps.append({"id": "engine", "kind": "blocked", "who": "Justin", "cmd": None,
+                      "proof": "an engine is pinned in kit/engine.lock.json and is in the client's pack",
+                      "if_fails": "no engine tarball matching the pin: run scripts/build_engine.py, then rcm pack"})
+        return steps
+    installable = [p for p in profiles if p in ENGINE_NAMES]
+    steps.append({"id": "profiles", "kind": "asks", "who": "kit, on the client's yes",
+                  "cmd": base + ["computers", "bash", name, "-c",
+                                 " && ".join(f"rcm-engine profile {p} --charter /root/.rcm/charters/profiles/{p}/CHARTER.md --paused"
+                                             for p in installable)],
+                  "proof": f"{len(installable)} profiles installed, every scheduled job paused: {', '.join(installable)}"})
+    if any(p not in ENGINE_NAMES for p in profiles):
+        steps.append({"id": "radar", "kind": "person", "who": "Justin", "cmd": None,
+                      "proof": "the radar agent is in the engine",
+                      "how": "Lead Radar was chosen, and the engine doesn't carry a radar profile yet. The reactivation agents install without it."})
     steps += [
-        {"id": "charters", "kind": "asks", "who": "kit, on the client's yes",
-         "cmd": base + ["computers", "bash", name, "-c",
-                        f"mkdir -p /root/.rcm && echo {payload} | base64 -d | tar -xz -C /root/.rcm"],
-         "proof": "/root/.rcm/charters holds the project charter, the agent charter and each profile's"},
-        {"id": "profiles", "kind": "asks", "who": "kit, on the client's yes",
-         "cmd": base + ["computers", "bash", name, "-c",
-                        " && ".join(f"rcm-engine profile {p} --charter /root/.rcm/charters/profiles/{p}/CHARTER.md --paused"
-                                    for p in profiles)],
-         "proof": f"{len(profiles)} profiles installed, every scheduled job paused: {', '.join(profiles)}"},
+        {"id": "keys", "kind": "person", "who": "the client", "cmd": base + ["computers", "ssh", name],
+         "proof": "each agent has the CRM key and location, and the spend guard has the model key",
+         "how": "On the computer's terminal, run `rcm-engine keys`. It asks for each key at a hidden prompt and prints none."},
         {"id": "support", "kind": "person", "who": "the client",
          "cmd": None, "proof": f"{support_email} is a Full access member of the client's Orgo workspace",
          "how": f"Orgo, Settings, Members, Invite people: {support_email}, Full access. Starter allows one person."},
@@ -150,7 +190,10 @@ def run(folder, orgo="orgo", profile=None, apply=False, yes=False, runner=subpro
         if not apply or (s["kind"] == "asks" and not yes):
             results.append({**s, "result": "planned", "note": "dry run" if not apply else "waits for the client's yes"})
             continue
-        p = runner(s["cmd"], capture_output=True, text=True, env=env)
+        for cmd in s.get("cmds") or [s["cmd"]]:
+            p = runner(cmd, capture_output=True, text=True, env=env)
+            if p.returncode:
+                break
         ok = p.returncode == 0
         if s["id"] == "computer_exists":
             name = json.loads((Path(folder) / "deliver" / "manifest.json").read_text())["orgo"]["computer_name"]

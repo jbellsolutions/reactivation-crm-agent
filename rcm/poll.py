@@ -24,6 +24,7 @@ from pathlib import Path
 from . import notion, offer as offer_mod, onboard, signup
 
 BUILDS_DS = "413fd042-f076-4078-80fe-d588a20fc32d"
+SIGNUPS_DS = "129d16fc-c867-4e30-b7e9-30633c302ba2"  # Reactivation Signups, under Command Center (2026-11-07)
 CONFIG_KEYS = ("NOTION_TOKEN", "STRIPE_READ_KEY", "RCM_SIGNUPS_DS", "RCM_BUILDS_DS", "RCM_CLIENTS_ROOT")
 
 
@@ -36,6 +37,8 @@ def config(env_file=offer_mod.ROOT / ".env.local"):
             if sep and k in CONFIG_KEYS and not cfg.get(k):
                 cfg[k] = v.strip().strip('"').strip("'")
     cfg["RCM_BUILDS_DS"] = cfg.get("RCM_BUILDS_DS") or BUILDS_DS
+    cfg["RCM_SIGNUPS_DS"] = cfg.get("RCM_SIGNUPS_DS") or SIGNUPS_DS
+    cfg["RCM_CLIENTS_ROOT"] = cfg.get("RCM_CLIENTS_ROOT") or str(Path.home() / "AI OS Market Share " / "AIOS" / "Client Builds")
     return cfg
 
 
@@ -54,8 +57,9 @@ def install_email(intake, folder, pack_path):
 
 def poll(api, cfg, offer=None, write_builds=False):
     offer = offer or offer_mod.load()
-    report = {"onboarded": [], "needs_fix": [], "builds": [], "left_out": []}
-    rows = api.query(cfg["RCM_SIGNUPS_DS"], {"property": "Status", "select": {"equals": "new"}})
+    report = {"onboarded": [], "needs_price": [], "needs_fix": [], "builds": [], "left_out": []}
+    rows = api.query(cfg["RCM_SIGNUPS_DS"], {"or": [{"property": "Status", "select": {"equals": "new"}},
+                                                    {"property": "Status", "select": {"equals": "needs price"}}]})
     builds_schema = api.schema(cfg["RCM_BUILDS_DS"]) if write_builds else None
     signups_schema = api.schema(cfg["RCM_SIGNUPS_DS"])
     for page in rows:
@@ -64,6 +68,8 @@ def poll(api, cfg, offer=None, write_builds=False):
             form = json.loads(vals.get("Intake") or "{}")
             session = api.checkout_session(vals.get("Checkout session") or "")
             intake = signup.intake_from(session, form, offer)
+            if vals.get("Price"):
+                intake["agreed"] = {**intake.get("agreed", {}), "price_per_appointment_usd": float(vals["Price"])}
         except (signup.SignupError, ValueError, RuntimeError) as e:
             p, _ = notion.props({"Status": "needs fix", "Note": str(e)}, signups_schema)
             api.update(page["id"], p)
@@ -84,8 +90,12 @@ def poll(api, cfg, offer=None, write_builds=False):
                 api.create(cfg["RCM_BUILDS_DS"], props)
             report["builds"].append(row["Source ID"])
             report["left_out"] += [f"{row['Source ID']} {l}" for l in left]
-        p, _ = notion.props({"Status": "onboarded", "Source ID": row["Source ID"], "Note": f"record: {folder}"},
-                            signups_schema)
+        # Pricing is custom per client and niche (Justin, 2026-11-07): without a Price the record is made and
+        # waits, the deposit not yet opened; filling Price on the row finishes it on the next run.
+        priced = res["terms"] is not None
+        status = "onboarded" if priced else "needs price"
+        note = f"record: {folder}" if priced else f"record: {folder}; fill in Price for this client"
+        p, _ = notion.props({"Status": status, "Source ID": row["Source ID"], "Note": note}, signups_schema)
         api.update(page["id"], p)
-        report["onboarded"].append(row["Source ID"])
+        report["onboarded" if priced else "needs_price"].append(row["Source ID"])
     return report

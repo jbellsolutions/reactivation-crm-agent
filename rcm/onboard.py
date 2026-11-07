@@ -103,6 +103,7 @@ def manifest(intake, offer, slug, agreed):
             "terms": agreed,
             "booking_link": intake["booking_link"],
             "timezone": intake["timezone"],
+            "owner_first_name": intake_mod.clean(intake["owner_first_name"], 40),
         },
     }
 
@@ -209,10 +210,15 @@ def pack(folder, out_dir=None):
     folder = Path(folder)
     out = Path(out_dir or folder / "factory" / "outbox") / f"{folder.name.replace(' ', '-')}-pack.zip"
     out.parent.mkdir(parents=True, exist_ok=True)
+    lock = json.loads(ENGINE_LOCK.read_text()) if ENGINE_LOCK.exists() else {}
+    engine = offer_mod.ROOT / "dist" / lock.get("file", "engine.tar.gz")
     with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as z:
         for f in sorted((folder / "deliver").rglob("*")):
             if f.is_file():
                 z.write(f, Path("deliver") / f.relative_to(folder / "deliver"))
+        if lock.get("bundle") == "pack" and engine.exists():
+            # The engine travels in the paying client's own pack; the install checks its sha256 on the computer.
+            z.write(engine, Path("deliver") / "engine" / engine.name)
     return out
 
 

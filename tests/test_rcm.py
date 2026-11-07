@@ -90,8 +90,8 @@ def sel(*names):
 
 
 TXT, TITLE = {"type": "rich_text"}, {"type": "title"}
-SIGNUPS = {"Name": TITLE, "Status": sel("new", "onboarded", "needs fix"), "Checkout session": TXT, "Intake": TXT,
-           "Source ID": TXT, "Note": TXT}
+SIGNUPS = {"Name": TITLE, "Status": sel("new", "needs price", "onboarded", "needs fix"), "Checkout session": TXT,
+           "Intake": TXT, "Source ID": TXT, "Note": TXT, "Price": {"type": "number"}}
 BUILDS = {"Build": TITLE, "Client name": TXT, "Source ID": TXT, "Waiting on": TXT, "Product id": TXT,
           "Spend": {"type": "number"}, "Status": sel("new", "running", "paused", "stopped", "failed", "done"),
           "Stage": sel("spec", "understand", "design", "build", "review", "fix", "walk", "package")}
@@ -113,8 +113,8 @@ class FakeNotionStripe:
         if method == "GET" and path == "/data_sources/builds":
             return 200, {"properties": BUILDS}
         if method == "POST" and path == "/data_sources/signups/query":
-            return 200, {"results": [r for r in self.rows if r["status"] == "new" and r.setdefault("seen", True)] and
-                         [self.page(r) for r in self.rows if r["status"] == "new"], "has_more": False}
+            wanted = {f["select"]["equals"] for f in body["filter"]["or"]}
+            return 200, {"results": [self.page(r) for r in self.rows if r["status"] in wanted], "has_more": False}
         if method == "POST" and path == "/data_sources/builds/query":
             sid = body["filter"]["rich_text"]["equals"]
             return 200, {"results": [{"id": b["id"]} for b in self.builds if b["sid"] == sid], "has_more": False}
@@ -138,7 +138,8 @@ class FakeNotionStripe:
             return {"type": "rich_text", "rich_text": [{"plain_text": v}]}
         return {"id": r["id"], "properties": {"Name": {"type": "title", "title": [{"plain_text": r["form"].get("business", "")}]},
                                                "Status": {"type": "select", "select": {"name": r["status"]}},
-                                               "Checkout session": t(r["session"]), "Intake": t(json.dumps(r["form"]))}}
+                                               "Checkout session": t(r["session"]), "Intake": t(json.dumps(r["form"])),
+                                               "Price": {"type": "number", "number": r.get("price")}}}
 
 
 class PollTests(unittest.TestCase):
@@ -148,7 +149,7 @@ class PollTests(unittest.TestCase):
         session = json.loads((EXAMPLE / "checkout-session.json").read_text())
         bad = {**form, "owner_email": "someone@example.org", "business": "Mismatch Test Co"}
         self.fake = FakeNotionStripe(
-            [{"id": "r1", "status": "new", "session": session["id"], "form": form},
+            [{"id": "r1", "status": "new", "session": session["id"], "form": form, "price": 120},
              {"id": "r2", "status": "new", "session": session["id"], "form": bad}],
             {session["id"]: session})
         self.cfg = {"NOTION_TOKEN": "t", "STRIPE_READ_KEY": "k", "RCM_SIGNUPS_DS": "signups",
@@ -182,6 +183,19 @@ class PollTests(unittest.TestCase):
     def test_without_write_builds_nothing_reaches_builds(self):
         poll.poll(self.api, self.cfg)
         self.assertFalse([w for w in self.fake.writes if w[0] == "create"])
+
+    def test_no_price_waits_then_finishes_when_price_is_filled(self):
+        self.fake.rows[0]["price"] = None
+        out = poll.poll(self.api, self.cfg)
+        self.assertEqual((out["onboarded"], out["needs_price"]), ([], ["rcm:harbor-test-roofing"]))
+        path = self.tmp / "clients" / "Harbor Test Roofing" / "ledger" / "events.jsonl"
+        self.assertEqual(ledger.read(path), [])
+        self.fake.rows[0]["price"] = 150
+        out = poll.poll(self.api, self.cfg)
+        self.assertEqual(out["onboarded"], ["rcm:harbor-test-roofing"])
+        self.assertEqual([e["type"] for e in ledger.read(path)], ["deposit"])
+        m = json.loads((self.tmp / "clients" / "Harbor Test Roofing" / "deliver" / "manifest.json").read_text())
+        self.assertEqual(m["rcm"]["terms"]["price_usd"], 150.0)
 
     def test_an_option_the_database_lacks_is_left_out_not_created(self):
         props, left = notion.props({"Status": "waiting", "Stage": "onboard", "Build": "x"}, BUILDS)
@@ -379,7 +393,7 @@ class InstallTests(unittest.TestCase):
         res = install.run(self.folder, str(self.stub), apply=True, yes=True, lock_path=self.tmp / "none.json")
         self.assertEqual(res[-1]["id"], "engine")
         self.assertEqual(res[-1]["result"], "blocked")
-        self.assertFalse(any("bash" in c for c in self.calls()))
+        self.assertFalse(any("rcm-engine" in " ".join(c) for c in self.calls()))
 
     def test_apply_without_yes_only_reads(self):
         install.run(self.folder, str(self.stub), apply=True, lock_path=self.lock())
@@ -413,6 +427,35 @@ class InstallTests(unittest.TestCase):
         self.assertNotIn("test-key-not-real", json.dumps(res))
         self.assertNotIn("other-secret", json.dumps(calls))
 
+    def test_a_pack_engine_goes_up_in_pieces_checked_by_sha256(self):
+        import hashlib
+        blob = os.urandom(150_000)
+        (self.folder / "deliver" / "engine").mkdir(parents=True, exist_ok=True)
+        (self.folder / "deliver" / "engine" / "engine.tar.gz").write_bytes(blob)
+        lock = self.tmp / "pack.lock.json"
+        lock.write_text(json.dumps({"bundle": "pack", "file": "engine.tar.gz", "version": "t",
+                                    "sha256": hashlib.sha256(blob).hexdigest()}))
+        res = install.run(self.folder, str(self.stub), apply=True, yes=True, lock_path=lock)
+        order = [r["id"] for r in res if r["id"] in ("charters", "engine", "profiles")]
+        self.assertEqual(order, ["charters", "engine", "profiles"])
+        self.assertEqual({r["id"]: r["result"] for r in res}["engine"], "ok")
+        bash = [c[-1] for c in self.calls() if "bash" in c]
+        chunks = [c for c in bash if c.startswith("printf %s ")]
+        self.assertGreater(len(chunks), 1)
+        final = next(c for c in bash if "sha256sum -c" in c and "rcm-engine.tar.gz" in c)
+        self.assertIn(hashlib.sha256(blob).hexdigest(), final)
+        profiles = next(c for c in bash if "rcm-engine profile" in c)
+        self.assertNotIn("rcm-engine profile radar", profiles)
+        self.assertIn("radar", [r["id"] for r in res])
+
+    def test_a_tampered_pack_engine_is_refused(self):
+        (self.folder / "deliver" / "engine").mkdir(parents=True, exist_ok=True)
+        (self.folder / "deliver" / "engine" / "engine.tar.gz").write_bytes(b"not the pinned engine")
+        lock = self.tmp / "pack.lock.json"
+        lock.write_text(json.dumps({"bundle": "pack", "file": "engine-missing.tar.gz", "sha256": "0" * 64}))
+        res = install.run(self.folder, str(self.stub), apply=True, yes=True, lock_path=lock)
+        self.assertEqual((res[-1]["id"], res[-1]["result"]), ("engine", "blocked"))
+
     def test_without_btg_it_asks_for_it_first(self):
         steps = install.plan(self.folder, "orgo")
         self.assertEqual((steps[0]["id"], steps[0]["kind"]), ("btg", "person"))
@@ -422,6 +465,60 @@ class InstallTests(unittest.TestCase):
         res = install.run(self.folder, str(self.stub), apply=True, yes=True, lock_path=self.lock())
         self.assertEqual({r["id"]: r["result"] for r in res}["computer"], "skipped")
         self.assertFalse(any("create" in c for c in self.calls()))
+
+
+ENGINE_SRC = Path(os.environ.get("RCM_ENGINE_SRC") or Path.home() / "AI OS Market Share " / "AIOS" / "Our AIOS" / "agents" / "gtm-box")
+
+
+@unittest.skipUnless((ENGINE_SRC / "build" / "opener").is_dir(), "the CRM team's source isn't on this machine")
+class EngineBuildTests(unittest.TestCase):
+    def setUp(self):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("build_engine", ROOT / "scripts" / "build_engine.py")
+        self.be = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(self.be)
+
+    def test_deterministic_client_clean_and_paused(self):
+        import gzip, io as _io, tarfile as _tar
+        blob1, _, _ = self.be.build()
+        blob2, _, man = self.be.build()
+        self.assertEqual(blob1, blob2)
+        with _tar.open(fileobj=_io.BytesIO(blob1), mode="r:gz") as tar:
+            names = tar.getnames()
+            read = lambda n: tar.extractfile(n).read().decode()
+            for name in ("opener", "replies", "closer", "deals"):
+                self.assertTrue(read(f"engine/profiles/{name}/SOUL.md").startswith("{{AGENT_CHARTER}}"))
+                jobs = json.loads(read(f"engine/profiles/{name}/cron/jobs.json"))["jobs"]
+                self.assertTrue(all(j.get("enabled") is False for j in jobs), name)
+            crm_map = json.loads(read("engine/crm-map.template.json"))
+            self.assertEqual((crm_map["location"], crm_map["lanes"], crm_map["templates"]), ("", {}, {}))
+            everything = "".join(read(n) for n in names if tar.getmember(n).isfile())
+        self.assertNotIn(json.loads((ENGINE_SRC / "crm-map.json").read_text())["location"], everything)
+        self.assertIn("engine/install.sh", names)
+        self.assertIn("engine/rcm-engine", names)
+
+    def test_render_fills_the_client_charter(self):
+        import gzip, io as _io, tarfile as _tar, subprocess
+        blob, _, _ = self.be.build()
+        tmp = Path(tempfile.mkdtemp())
+        try:
+            with _tar.open(fileobj=_io.BytesIO(blob), mode="r:gz") as tar:
+                tar.extractall(tmp)
+            res = onboard.onboard(sample(), tmp / "clients")
+            home = tmp / "rcm"
+            (home / "charters").mkdir(parents=True)
+            shutil.copytree(Path(res["folder"]) / "deliver" / "charters", home / "charters", dirs_exist_ok=True)
+            shutil.copy(Path(res["folder"]) / "deliver" / "manifest.json", home / "manifest.json")
+            (home / "box").mkdir()
+            subprocess.run([sys.executable, str(tmp / "engine" / "render.py"), "--bundle", str(tmp / "engine"),
+                            "--manifest", str(home / "manifest.json"), "--out", str(home)], check=True,
+                           capture_output=True)
+            soul = (home / "build" / "opener" / "SOUL.md").read_text()
+            self.assertIn("Project charter: Harbor Test Roofing reactivation", soul)
+            self.assertNotIn("{{", soul)
+            self.assertEqual(json.loads((home / "box" / "crm-map.json").read_text())["owner_user"], "Dana")
+        finally:
+            shutil.rmtree(tmp)
 
 
 class EndToEndTests(unittest.TestCase):

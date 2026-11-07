@@ -54,7 +54,8 @@ def stripe_calls(host):
 
 def signups_schema():
     sel = lambda *n: {"select": {"options": [{"name": x} for x in n]}}
-    return {"Name": {"title": {}}, "Status": sel("new", "onboarded", "needs fix"), "Checkout session": {"rich_text": {}},
+    return {"Name": {"title": {}}, "Status": sel("new", "needs price", "onboarded", "needs fix"),
+            "Price": {"number": {"format": "dollar"}}, "Checkout session": {"rich_text": {}},
             "Intake": {"rich_text": {}}, "Source ID": {"rich_text": {}}, "Note": {"rich_text": {}}}
 
 

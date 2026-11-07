@@ -25,7 +25,7 @@ What the agent does, in plain words:
 
 - **No price in outreach.** The $500 down and the appointment price live on the signup page and in the call.
   - **Open item:** "no prices in outreach" is a standing rule, while the pitch rests on "you only pay for qualified appointments". The rate isn't a price until Justin says so. Saying "you pay only for appointments that happen" is fine.
-- **No result we haven't measured.** Oliver's numbers aren't ours, and 7FF's aren't public.
+- **No result we haven't measured.** Oliver's numbers aren't ours, and no client's results are public.
 - **No timelines.** Don't say how fast anything happens.
 - **First names only. No em or en dashes.**
 
