@@ -2,7 +2,15 @@
 
 Working name. Justin and the Offer session set the public one. The machine-readable copy is `offer.json`.
 
-## In Justin's words (2026-11-07)
+## The price, in Justin's words (2026-11-08)
+
+> "no pay per lead flat $500 month 1 then 1k a month after that- Rev Partner and Lead Radar.  Both are in the 5k workforce"
+
+So: **a flat $500 for month 1, then $1,000 a month.** No fee per lead, no fee per appointment, no commission. The same wording is in `jbellsolutions/aios-workspace` at `75c162c` (`Offer/OFFER.md`, Q30, Q32 and Q39).
+
+## What he said before (2026-11-07), now superseded on price
+
+The pitch below set a per-appointment price for 90 days, then commission. His 2026-11-08 words replace that pricing. What still holds from it: the client talks to people who say they're interested, and the agent works the CRM they already have.
 
 > "Hey, our goal is to work with you on commission. For the first 90 days of us working together and getting to know each other, we do it on a per-appointment basis, and you only have to pay for the qualified appointments that are generated. If, after 90 days, we both feel good about it, we can either go to a commission or we can stay on appointment. We do it based off of not per lead, but per actual appointment that you do."
 
@@ -15,7 +23,7 @@ Working name. Justin and the Offer session set the public one. The machine-reada
 ## What the client gets
 
 - **A reactivation CRM agent on their own Orgo computer.** It writes a card for every person in their CRM who raised a hand and never bought, restarts each conversation from that card, answers every reply, books with their rep, and keeps the pipeline true. That's four agents: reactivation, reply, sales and deal.
-- **Lead Radar, if they want it** ("and/or"): it finds people asking for what they sell on socials and in groups, then hands them to the same reply agent.
+- **Lead Radar, in the same price** ("Rev Partner and Lead Radar"): it finds people asking for what they sell on socials and in groups, then hands them to the same reply agent.
 - **Better than GrokBot** as their window onto the agents, if they want one: chat, watch the screens, and buy a computer there if they don't have one.
 - **AI Guy support** inside their Orgo workspace, so we can troubleshoot.
 
@@ -23,14 +31,13 @@ Working name. Justin and the Offer session set the public one. The machine-reada
 
 | | |
 |---|---|
-| Down | **$500**, held as credit against qualified appointments |
-| Per qualified appointment | **Justin sets it.** Proposed: $100, so the deposit covers five |
-| First 90 days | Per qualified appointment only. A lead, a booking or a no-show costs nothing |
-| After 90 days | "We can either go to a commission or we can stay on appointment." The rate is Justin's |
-| When credit runs low | A top-up is requested once the credit can't cover the next appointment. The card from the deposit is on file |
-| Unused credit at the end | Justin's call |
+| Month 1 | **$500**, flat, paid at signup, last |
+| Every month after | **$1,000**, flat |
+| Per lead, per appointment, commission | None |
+| What it covers | The reactivation agents and Lead Radar ("Rev Partner and Lead Radar") |
+| Ending | Either side, by written notice; no month is charged after it ends |
 
-**A qualified appointment** is defined in `QUALIFIED-APPOINTMENT.md`: booked through the agent, held, and the person is interested and fits the client's criteria. The client has a dispute window to mark one not qualified, with a reason.
+**A qualified appointment** (`QUALIFIED-APPOINTMENT.md`) is what the agents work toward and what the weekly report counts: booked through the agent, held, and the person is interested and inside the service area. It no longer sets a charge.
 
 ## Who pays for what
 
@@ -47,4 +54,4 @@ Working name. Justin and the Offer session set the public one. The machine-reada
 
 ## What outreach says, and doesn't
 
-Outreach never quotes a price. The $500 and the appointment price live on the signup page and in the call. Never claim a result we haven't measured, and never give a timeline.
+Outreach never quotes a price. The $500 first month and the $1,000 a month live on the signup page and in the call. Never claim a result we haven't measured, and never give a timeline.

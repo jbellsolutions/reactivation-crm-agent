@@ -1,13 +1,13 @@
 # Reactivation CRM Agent
 
-A pay-per-qualified-appointment offer with an AI-native, hands-off delivery line. A client puts $500 down. A reactivation CRM agent installs on their own Orgo computer, restarts conversations with everyone in their CRM who went quiet, and books qualified appointments. They pay only for those, for the first 90 days.
+A flat-fee offer ($500 for month 1, then $1,000 a month) with an AI-native, hands-off delivery line. A client pays $500 for month 1. A reactivation CRM agent installs on their own Orgo computer, restarts conversations with everyone in their CRM who went quiet, and books qualified appointments. They pay only for those, for the first 90 days.
 
 Justin, 2026-11-07: "For the most part, though, we want to do it as a reactivation CRM agent... it should get installed automatically."
 
 ## The line
 
 ```
-web/: sales page -> signed agreement -> voice intake (GPT-Live) -> $500 deposit, last -> a Signups row in Notion
+web/: sales page -> signed agreement -> voice intake (GPT-Live) -> $500 first month, last -> a Signups row in Notion
   -> rcm poll          every new paid row, on a schedule: the rest of this line, no person
   -> rcm signup        the paid session and the form become one intake
   -> rcm onboard       the client's record in the folder system: charters, manifest, ledger, Builds row

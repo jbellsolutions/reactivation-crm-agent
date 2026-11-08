@@ -4,13 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>You're In</title>
-<meta name="description" content="Your deposit is in.">
+<meta name="description" content="Your first month is paid.">
 <link rel="stylesheet" href="/style.css">
 </head>
 <body>
 <main>
   <p class="small">Step 3 of 3</p>
-  <h1 id="h">Checking your deposit</h1>
+  <h1 id="h">Checking your payment</h1>
   <p id="p" class="lede"></p>
 </main>
 <script>
@@ -19,8 +19,8 @@
   (async () => {
     const r = await fetch("/api/paid", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ session_id: sid }) });
     const out = await r.json().catch(() => ({}));
-    if (r.ok) { h.textContent = "You're in."; p.textContent = "Your deposit is credit toward your qualified appointments. We'll be in touch to set everything up with you."; }
-    else { h.textContent = "Almost there"; p.textContent = out.error || "We couldn't confirm your deposit."; }
+    if (r.ok) { h.textContent = "You're in."; p.textContent = "Your first month is paid. We'll be in touch to set everything up with you."; }
+    else { h.textContent = "Almost there"; p.textContent = out.error || "We couldn't confirm your payment."; }
   })();
 </script>
 </body>

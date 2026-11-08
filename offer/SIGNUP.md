@@ -9,7 +9,7 @@ Live in Stripe test mode at https://reactivation-signup.pages.dev (`web/`, Cloud
 | 1 | The offer | `/` | Nothing | Live |
 | 2 | A one-page lead generation agreement, signed with a typed full name, an email and a box | `/agreement/`, `POST /api/agreement` | A new Reactivation Signups row: `agreement signed`, with the signature (name, email, time, IP, version) | Live. The text is a stand-in until Justin's own one-pager replaces it |
 | 3 | The voice intake: the business, what they sell and where, the CRM, the lists and their text consent, and "just your past leads, or also new people asking?". It tells them what a qualified appointment is; it doesn't ask | `/intake/`, `POST /api/voice` (GPT-Live, `gpt-live-1`), `POST /api/intake`; typed fallback on the same page | The answers on the same row: `intake done` | Typed path live. Voice waits on `OPENAI_API_KEY` in the site's settings |
-| 4 | The $500 deposit, last | Stripe Payment Link, carrying the row as `client_reference_id` and the signer's email | Nothing yet | Live in test mode |
+| 4 | The first month, $500, last | Stripe Payment Link, carrying the row as `client_reference_id` and the signer's email. The $1,000 a month from month 2 isn't on the link yet (GO-LIVE.md 4) | Nothing yet | Live in test mode |
 | 5 | Back from Stripe | `/thanks/`, `POST /api/paid` | The row becomes `new`, with its Checkout session | Live |
 | 6 | The poller, every 15 minutes | `rcm poll --write-builds` | The client record in Client Builds, its pack, a queued install email, its Builds row; `needs price` until Justin sets the client's Price | Live |
 

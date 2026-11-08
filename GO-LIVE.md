@@ -1,17 +1,17 @@
 # Go-live: what's on, what's left, and who
 
 Justin's answers of 2026-11-07:
-- **Price:** custom per person and niche.
+- **Price:** flat, $500 for month 1, then $1,000 a month; no fee per lead or per appointment, no commission (Justin, 2026-11-08: "no pay per lead flat $500 month 1 then 1k a month after that- Rev Partner and Lead Radar.  Both are in the 5k workforce").
 - **Go-live writes:** all four approved (the Notion database, the Stripe link, deploying the site, the poller and its schedule).
 - **Engine:** the CRM team already built for this; no client's repo or computer touched.
 - **Kit:** public.
 
 | # | Step | State | Who | Cost |
 |---|---|---|---|---|
-| 1 | Price per qualified appointment | **Custom per client.** Justin fills Price in the client's Signups row; until then the record waits as `needs price` and the deposit isn't opened | Justin, per client | None |
-| 2 | Commission rate after day 90, and unused credit | Open | Justin | None |
+| 1 | The price | **Set: flat.** $500 for month 1, then $1,000 a month. The code behind it still runs the old per-appointment ledger and waits on a Price per client (`rcm/ledger.py`, `rcm/poll.py`, `offer/offer.json`): not changed yet | Justin's yes to switch the code | None |
+| 2 | Commission rate after day 90, and unused credit | **No longer applies**: no commission and no credit under the flat price | | None |
 | 3 | A lawyer's read of the agreement (`offer/AGREEMENT.md`, published at `/terms/`) | Open | Justin | A lawyer's fee |
-| 4 | The Stripe deposit link | **Live in test mode**: $500, paid last, back to `/thanks/`. For live: a live link (`scripts/golive.py stripe --apply` with live keys) and a restricted live read key in place of the test secret | Justin's live keys | Stripe's fee per charge |
+| 4 | The Stripe link | **Live in test mode**: $500, paid last, back to `/thanks/`. That is month 1. **Not built yet: the $1,000 a month from month 2.** Plan: one subscription Payment Link with two lines, a one-time $500 for month 1 and $1,000 a month that starts after 30 days (`subscription_data[trial_period_days]=30`), so checkout still charges $500 today and `/api/paid`'s $500 check still holds. Build it in test mode with `scripts/golive.py stripe`, then live with his live keys and a restricted live read key in place of the test secret | Justin's yes for the test-mode link; his live keys | Stripe's fee on each charge |
 | 5 | The Reactivation Signups database | **Done**, with statuses `agreement signed`, `intake done`, `new`, `needs price`, `onboarded`, `needs fix` and the signature field | | None |
 | 6 | The signup site | **Live**: https://reactivation-signup.pages.dev (sales, agreement, intake, thanks, terms) | | Free tier |
 | 6b | The voice (GPT-Live, `gpt-live-1`) | Built and tested; waits on `OPENAI_API_KEY` in the site's settings. Until then the typed fallback shows | Justin adds the key with `add-secret OPENAI_API_KEY` | OpenAI per second of voice |
