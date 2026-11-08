@@ -22,6 +22,7 @@ Justin's answers of 2026-11-07:
 | 10 | `reactivation-crm-agent` in the Products catalog (`products/catalog.json` in client-build-system, which the Notion sync reads) | **Done.** In the catalog at `12f1968` (front door, price unset); the Notion Products sync carries it | | None |
 | 11 | Sending: drafts go through the guarded sender, as the CRM team's do | Already deployed (test mode) | Justin approves each draft type once | Fixed, not per client |
 | 12 | Better than GrokBot's FSL-1.1 licence, for use inside a paid offer | Open | Justin | None |
+| 13 | Lead Radar for clients who choose it | **Wired**: the install's `radar` step runs Lead Radar's own installer on the same computer once `kit/radar.lock.json` names a release. Lead Radar is still being built in `jbellsolutions/lead-radar-agent`, which is private | Its sessions finish; Justin says it can be public; the lock gets its tag | Their Treg, OpenRouter and Orgo |
 | 13 | The install email template, approved once | Open | Justin | None |
 | 14 | The public name | Open, through the Offer session | Justin | None |
 | 15 | The kit public | **Approved** | | None |

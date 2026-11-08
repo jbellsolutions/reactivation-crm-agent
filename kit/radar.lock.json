@@ -1,0 +1,6 @@
+{
+  "_comment": "The Lead Radar release the install sends clients to (rcm/install.py radar_step). Lead Radar is its own agent with its own installer; it goes on the same computer, beside the reactivation agents. Fill ref (a tag or branch) and set public to true only once jbellsolutions/lead-radar-agent is released and public: Justin's call.",
+  "repo": "https://github.com/jbellsolutions/lead-radar-agent",
+  "ref": "",
+  "public": false
+}

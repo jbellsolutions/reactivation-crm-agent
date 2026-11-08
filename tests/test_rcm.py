@@ -466,6 +466,21 @@ class InstallTests(unittest.TestCase):
         self.assertNotIn("rcm-engine profile radar", profiles)
         self.assertIn("radar", [r["id"] for r in res])
 
+    def test_lead_radar_waits_on_a_release_and_never_stops_the_install(self):
+        m = {"client": "harbor-test", "label": "Harbor Test Roofing"}
+        lock = Path(self.tmp) / "radar.lock.json"
+        lock.write_text(json.dumps({"repo": "https://github.com/jbellsolutions/lead-radar-agent", "ref": "", "public": False}))
+        step = install.radar_step(m, "Reactivation", lock)
+        self.assertEqual((step["kind"], step["who"]), ("person", "Justin"))
+        lock.write_text(json.dumps({"repo": "https://github.com/jbellsolutions/lead-radar-agent", "ref": "v1.0.0", "public": True}))
+        step = install.radar_step(m, "Reactivation", lock)
+        self.assertEqual(step["who"], "the client, in their own terminal")
+        clone, run = step["cmds"]
+        self.assertIn("v1.0.0", clone)
+        self.assertEqual(run[run.index("--computer") + 1], "Reactivation")
+        self.assertEqual(run[run.index("--business") + 1], "Harbor Test Roofing")
+        self.assertNotIn("KEY", " ".join(run))
+
     def test_a_tampered_pack_engine_is_refused(self):
         (self.folder / "deliver" / "engine").mkdir(parents=True, exist_ok=True)
         (self.folder / "deliver" / "engine" / "engine.tar.gz").write_bytes(b"not the pinned engine")

@@ -12,9 +12,12 @@ Their pack is the zip attached to their install email (`rcm pack`): their charte
 
 ## 1. Better than GrokBot: the window, and where the computer comes from (default)
 
-Install Better than GrokBot from https://github.com/jbellsolutions/better-than-grokbot (its INSTALL.md). It needs the client's Orgo key in its `.env.local`:
-- **Already on Orgo:** they make a key at orgo.ai, API keys.
-- **New to Orgo:** they sign up there, pick Starter ($29 a month for one always-on computer, on their own card), then make the key.
+Install Better than GrokBot from https://github.com/jbellsolutions/better-than-grokbot (its INSTALL.md), and sign in with the client's Orgo account:
+- **Already on Orgo:** they sign in.
+- **New to Orgo:** they make the account when they sign in.
+- **No computer to spare on their plan:** Better than GrokBot says so, and its **Upgrade to Orgo** button opens Orgo's plan page. They buy the computer there, on their own card. This is the buy-a-computer path.
+
+Its `.env.local` then holds their Orgo key.
 
 Better than GrokBot's own docs say its install hasn't been proven on a client's Mac yet. If it fails, or the client says no, skip to the Orgo CLI: `orgo login`.
 
@@ -43,6 +46,12 @@ This does four things:
 **The model key** goes in at the engine's hidden prompt.
 
 **If the engine step says blocked,** stop and tell them: their record is ready, and the agents install when the release is published.
+
+## 3b. Lead Radar, if they chose it
+
+Lead Radar is its own agent with its own installer, and it goes on the same computer, beside the reactivation agents. The plan's `radar` step says which:
+- **Waiting on Justin:** `kit/radar.lock.json` doesn't name a release yet. Tell them the reactivation agents go first, and Lead Radar joins the same computer when it's released.
+- **The client, in their own terminal:** the step prints a clone and an `install/lra-install install --computer Reactivation ...` line. Open the app's Terminal panel, or a terminal window, and have them run it there, since it asks for their Treg, OpenRouter and Slack or Telegram keys at hidden prompts. Read along. Show them its cost lines before they say yes to anything.
 
 ## 4. Support access
 

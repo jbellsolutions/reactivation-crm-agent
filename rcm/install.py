@@ -24,6 +24,7 @@ import hashlib
 import io
 import json
 import os
+import shlex
 import subprocess
 import tarfile
 from pathlib import Path
@@ -31,6 +32,9 @@ from pathlib import Path
 from .onboard import ENGINE_LOCK
 
 COMPUTER = {"ram": "8", "cpu": "2", "disk": "40"}
+# Lead Radar is its own agent with its own installer (jbellsolutions/lead-radar-agent). The lock names the release
+# the kit sends clients to; until it names one, a client who chose Lead Radar gets the reactivation agents first.
+RADAR_LOCK = Path(__file__).resolve().parent.parent / "kit" / "radar.lock.json"
 SUPPORT_EMAIL = "support@usingaitoscale.com"
 
 
@@ -74,6 +78,30 @@ def btg_env(path):
     return out
 
 
+def radar_step(m, name, lock_path=RADAR_LOCK):
+    """Lead Radar on the same computer, beside the reactivation agents, through Lead Radar's own installer.
+
+    It runs in the client's own terminal, because it asks for their Treg, OpenRouter and Slack or Telegram keys at
+    hidden prompts. Until kit/radar.lock.json names a release in a public repo, the step waits on Justin.
+    """
+    p = Path(lock_path)
+    lock = json.loads(p.read_text()) if p.exists() else {}
+    if not (lock.get("repo") and lock.get("ref") and lock.get("public")):
+        return {"id": "radar", "kind": "person", "who": "Justin", "cmd": None,
+                "proof": "kit/radar.lock.json names a released Lead Radar installer in a public repo",
+                "how": "Lead Radar was chosen. Its installer isn't released to clients yet, so the reactivation "
+                       "agents install now and Lead Radar joins the same computer when the lock names a release."}
+    clone = ["git", "clone", "--depth", "1", "--branch", lock["ref"], lock["repo"], "lead-radar-agent"]
+    install = ["lead-radar-agent/install/lra-install", "install", "--computer", name,
+               "--business", m.get("label") or m["client"], "--client", m["client"], "--grokbot", "skip"]
+    return {"id": "radar", "kind": "person", "who": "the client, in their own terminal", "cmd": None,
+            "cmds": [clone, install],
+            "proof": "Lead Radar's own install ends with its lead-radar profile on this computer and its first "
+                     "message in the client's channel",
+            "how": f"In the client's own terminal, so they type each key at its hidden prompt: {shlex.join(clone)}, "
+                   f"then {shlex.join(install)}. Show them its cost lines before they say yes to anything."}
+
+
 def charters_payload(folder):
     """The rendered charters as one base64 tar, so they reach the computer in a single command."""
     buf = io.BytesIO()
@@ -83,7 +111,8 @@ def charters_payload(folder):
     return base64.b64encode(buf.getvalue()).decode()
 
 
-def plan(folder, orgo="orgo", profile=None, lock_path=ENGINE_LOCK, support_email=SUPPORT_EMAIL, btg=None, workspace=None):
+def plan(folder, orgo="orgo", profile=None, lock_path=ENGINE_LOCK, support_email=SUPPORT_EMAIL, btg=None, workspace=None,
+         radar_lock=RADAR_LOCK):
     folder = Path(folder)
     m = json.loads((folder / "deliver" / "manifest.json").read_text())
     name = m["orgo"]["computer_name"]
@@ -98,9 +127,11 @@ def plan(folder, orgo="orgo", profile=None, lock_path=ENGINE_LOCK, support_email
         steps.append({"id": "btg", "kind": "person", "who": "the client", "cmd": None,
                       "proof": "Better than GrokBot is running with the client's Orgo key in its .env.local",
                       "how": "Install Better than GrokBot from https://github.com/jbellsolutions/better-than-grokbot "
-                             "(its INSTALL.md), with an Orgo key from orgo.ai, API keys. New to Orgo: sign up there "
-                             "and pick Starter. Then rerun with --btg-env <its .env.local>. To skip Better than "
-                             "GrokBot, sign in with `orgo login` instead."})
+                             "(its INSTALL.md) and sign in with the client's Orgo account; new to Orgo, they make "
+                             "one there. No computer to spare on their plan? Better than GrokBot says so, and its "
+                             "Upgrade to Orgo button opens Orgo's plan page, where they buy one on their own card. "
+                             "Then rerun with --btg-env <its .env.local>. To skip Better than GrokBot, sign in "
+                             "with `orgo login` instead."})
     steps += [
         {"id": "signed_in", "kind": "auto", "who": "kit", "cmd": base + ["--json", "whoami"],
          "proof": "Orgo answers with the client's account",
@@ -149,9 +180,7 @@ def plan(folder, orgo="orgo", profile=None, lock_path=ENGINE_LOCK, support_email
                                              for p in installable)],
                   "proof": f"{len(installable)} profiles installed, every scheduled job paused: {', '.join(installable)}"})
     if any(p not in ENGINE_NAMES for p in profiles):
-        steps.append({"id": "radar", "kind": "person", "who": "Justin", "cmd": None,
-                      "proof": "the radar agent is in the engine",
-                      "how": "Lead Radar was chosen, and the engine doesn't carry a radar profile yet. The reactivation agents install without it."})
+        steps.append(radar_step(m, name, radar_lock))
     steps += [
         {"id": "keys", "kind": "person", "who": "the client", "cmd": base + ["computers", "ssh", name],
          "proof": "each agent has the CRM key and location, and the spend guard has the model key",
