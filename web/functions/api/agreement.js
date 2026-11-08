@@ -2,7 +2,7 @@
 // One new Signups row holds the signature: who, when, from where, which version. Returns the row for the next steps.
 import { json, rich, notion, EMAIL, off, OFF } from "../../lib/notion.js";
 
-export const VERSION = "2026-11-07";
+export const VERSION = "2026-11-08";
 
 export async function onRequestPost({ request, env }) {
   if (off(env)) return json(503, OFF);

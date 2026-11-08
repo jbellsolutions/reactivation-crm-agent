@@ -15,7 +15,7 @@ Justin's answers of 2026-11-07:
 | 5 | The Reactivation Signups database | **Done**, with statuses `agreement signed`, `intake done`, `new`, `needs price`, `onboarded`, `needs fix` and the signature field | | None |
 | 6 | The signup site | **Live**: https://reactivation-signup.pages.dev (sales, agreement, intake, thanks, terms) | | Free tier |
 | 6b | The voice (GPT-Live, `gpt-live-1`) | Built and tested; waits on `OPENAI_API_KEY` in the site's settings. Until then the typed fallback shows | Justin adds the key with `add-secret OPENAI_API_KEY` | OpenAI per second of voice |
-| 6c | Justin's own one-page lead generation agreement in place of the stand-in on `/agreement/` | Open | Justin sends it | None |
+| 6c | The agreement | **Done**: adapted from Justin's own 2020 pay-per-appointment agreement (`offer/AGREEMENT.md`, live at `/agreement/` and `/terms/`). Open: the courts for disputes and the provider's legal name | Justin | None |
 | 7 | The poller | **Live**: every 15 minutes (launchd `com.usingaitoscale.rcm-poll`) | | None |
 | 8 | The engine: the CRM team (opener, replies, closer, deals), packaged by `scripts/build_engine.py`, pinned in `kit/engine.lock.json`, carried in each client's pack | **Built and tested offline.** Not yet run on a client's computer | The first client's install proves it | None |
 | 9 | A support login: `support@usingaitoscale.com` and a free Orgo account, to accept client workspace invites | Open | Justin (creating accounts is his) | None |
