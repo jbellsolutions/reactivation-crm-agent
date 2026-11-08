@@ -93,3 +93,31 @@ test("everything is off until the settings exist", async () => {
 });
 
 test("check passes the voice answers", () => assert.deepEqual(check(ANSWERS), []));
+
+import { onRequestPost as voice } from "../functions/api/voice.js";
+import { MODEL, SAVE_INTAKE } from "../lib/voice.js";
+
+test("voice opens a GPT-Live session for a signed signup, with save_intake, and returns the answer", async () => {
+  world();
+  const calls = [];
+  const base = globalThis.fetch;
+  globalThis.fetch = async (url, opts = {}) => {
+    if (url === "https://api.openai.com/v1/live/sessions") {
+      calls.push(JSON.parse(opts.body));
+      return new Response(JSON.stringify({ session: { id: "live_1" }, transport: { type: "webrtc", sdp: "v=0 answer" } }), { status: 201 });
+    }
+    return base(url, opts);
+  };
+  const r = await post(voice, { row: ROW, sdp: "v=0 offer" }, { ...ENV, OPENAI_API_KEY: "sk-not-real" });
+  assert.equal(r.status, 200);
+  assert.equal((await r.json()).sdp, "v=0 answer");
+  assert.equal(calls[0].session.model, MODEL);
+  assert.equal(calls[0].session.delegation.responses.tools[0].name, SAVE_INTAKE.name);
+  assert.equal(calls[0].transport.sdp, "v=0 offer");
+});
+
+test("voice won't open for someone who hasn't signed, or without a key", async () => {
+  world({ status: "new" });
+  assert.equal((await post(voice, { row: ROW, sdp: "v=0 offer" }, { ...ENV, OPENAI_API_KEY: "sk-not-real" })).status, 403);
+  assert.equal((await post(voice, { row: ROW, sdp: "v=0 offer" }, ENV)).status, 503);
+});
