@@ -1,5 +1,5 @@
 // POST /api/intake: step 3. The answers the voice intake (or the typed form) gathered, saved on the person's
-// Signups row. Only after this does the page offer the deposit, which is the last step.
+// Signups row. Only after this does the page offer the first month's payment, which is the last step.
 import { json, rich, notion, textOf, ROW, off, OFF } from "../../lib/notion.js";
 
 export const FIELDS = [

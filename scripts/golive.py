@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """The two remote setups behind self-serve signup, printed first and made only on --apply.
 
-    python3 scripts/golive.py stripe  --signup-host <host>                 # the $500 deposit link, as API calls
+    python3 scripts/golive.py stripe  --signup-host <host>                 # the first-month ($500) link, as API calls
     python3 scripts/golive.py stripe  --signup-host <host> --apply         # makes it (STRIPE_SECRET_KEY)
     python3 scripts/golive.py notion  --parent-page <Command Center page id>          # the Signups data source
     python3 scripts/golive.py notion  --parent-page <id> --apply           # makes it (NOTION_TOKEN)
@@ -37,8 +37,8 @@ def stripe_calls(host):
     """Product, price, Payment Link: terms consent required, the card saved for top-ups, redirect to intake."""
     cents = int(OFFER["deposit_usd"] * 100)
     return [
-        ("products", {"name": "Reactivation CRM Agent deposit",
-                      "description": "Credit toward qualified appointments, first 90 days."}),
+        ("products", {"name": "Reactivation CRM Agent, first month",
+                      "description": "Month 1, flat. Then $1,000 a month; no fee per lead or per appointment."}),
         ("prices", {"product": "{product}", "currency": "usd", "unit_amount": str(cents)}),
         ("payment_links", {
             "line_items[0][price]": "{price}", "line_items[0][quantity]": "1",
