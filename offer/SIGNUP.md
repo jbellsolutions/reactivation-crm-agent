@@ -1,30 +1,23 @@
-# Signup: no person needed, and a call if they want one
+# Signup: in Justin's order, with no person needed
 
-Justin: "A person could theoretically sign up without having to talk to anybody. If they do, they talk to us on a readout recording."
+Justin, 2026-11-07: "The first step would be the sales page, and then they'd click on just a quick agreement they would sign... It would be like this page here, where the voice AI would get all the information, and the last step would be the payment."
 
-## Self-serve
+Live in Stripe test mode at https://reactivation-signup.pages.dev (`web/`, Cloudflare Pages project `reactivation-signup`).
 
-| # | Step | Tool | Lands in |
-|---|---|---|---|
-| 1 | The signup page explains the offer and links to the deposit | `web/public/index.html`, its own small Cloudflare Pages site | Built, checked in a browser. Not deployed: GO-LIVE 6 |
-| 2 | $500 deposit. Accepting the agreement is required, and the card is saved for top-ups | A Stripe Payment Link, made by `scripts/golive.py stripe` | Script built and dry-run. Not created: GO-LIVE 4 |
-| 3 | After paying, they land on the intake page with their session id | The link's redirect to `/intake/?session_id=...` | Built |
-| 4 | The intake form: business, what they sell, area, rep, booking link, criteria, lists and consent, CRM, Orgo, model, Lead Radar yes or no | `web/public/intake/`, posting to `POST /api/intake`. That endpoint checks the paid session with Stripe and writes one row to the Reactivation Signups data source in Notion | Built, 6 Node tests. The Signups database: `scripts/golive.py notion`, GO-LIVE 5 |
-| 5 | The poller reads new Signups rows and their Stripe sessions | `rcm poll` | Built, tested against a stand-in Notion and Stripe |
-| 6 | The record is made: folder, charters, manifest, ledger opened with the deposit, the pack, the Builds row in the Factory's live options | `rcm signup`, `rcm onboard`, `rcm pack`, `rcm poll --write-builds` | Built and tested |
-| 7 | The install email, with their pack attached, is queued for the guarded sender | `factory/outbox/install-email.json` | Built. The template is approved once: GO-LIVE 13 |
-| 8 | They install from Claude Code, the agents start paused, and they approve the offer and copy | `kit/INSTALL.md`, `rcm install --btg-env` | Built, tested against a stand-in `orgo`. The engine release is M1 |
+| # | Step | Page | What it writes | State |
+|---|---|---|---|---|
+| 1 | The offer | `/` | Nothing | Live |
+| 2 | A one-page lead generation agreement, signed with a typed full name, an email and a box | `/agreement/`, `POST /api/agreement` | A new Reactivation Signups row: `agreement signed`, with the signature (name, email, time, IP, version) | Live. The text is a stand-in until Justin's own one-pager replaces it |
+| 3 | The voice intake: the business, what they sell and where, the CRM, the lists and their text consent, and "just your past leads, or also new people asking?". It tells them what a qualified appointment is; it doesn't ask | `/intake/`, `POST /api/voice` (GPT-Live, `gpt-live-1`), `POST /api/intake`; typed fallback on the same page | The answers on the same row: `intake done` | Typed path live. Voice waits on `OPENAI_API_KEY` in the site's settings |
+| 4 | The $500 deposit, last | Stripe Payment Link, carrying the row as `client_reference_id` and the signer's email | Nothing yet | Live in test mode |
+| 5 | Back from Stripe | `/thanks/`, `POST /api/paid` | The row becomes `new`, with its Checkout session | Live |
+| 6 | The poller, every 15 minutes | `rcm poll --write-builds` | The client record in Client Builds, its pack, a queued install email, its Builds row; `needs price` until Justin sets the client's Price | Live |
 
-## With a call
+**Not asked at signup** (Justin): who takes the appointments, a booking link, Orgo, the model. The booking link and time zone come at the setup call, and the record lists them as a need. The qualified-appointment definition is the standard one in `offer.json`.
 
-They still pay the deposit and fill in the intake form: their email and booking link have to come from the form, because the Factory's spec pass keeps emails and phone numbers private (its note of 2026-11-07). The call books through Cal.com, and Read AI records it and delivers it to `Recordings/inbox/`. `cb recordings` files it in the client's folder, where it adds context to the build. Nothing in `rcm` reads a transcript.
+**Proven** on 2026-11-07, test mode, on the live site:
+- agreement, then answers, then the $500 test deposit;
+- `/thanks/` marked the row `new`;
+- the poller made "Flow Test Remodeling" in Client Builds and its Builds row, waiting on a price and the setup call.
 
-The call agenda is `../onboarding/READOUT-CALL.md`.
-
-## Page copy (draft, unpublished)
-
-> **Pay only for appointments that happen.**
-> An AI agent goes through your CRM, finds everyone who asked for a quote or bought once and went quiet, and restarts the conversation one person at a time. When someone's interested, it books them with your team.
-> For the first 90 days you pay only for qualified appointments: the person showed up, they're interested, and they fit what you told us you need. Not for leads, and not for no-shows.
-> Put $500 down. It's credit toward your appointments.
-> The agent runs on your own computer and your own accounts, and you can watch it work.
+An earlier test with a test price showed the deposit opening as $500 credit, and the statement.

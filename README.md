@@ -7,7 +7,7 @@ Justin, 2026-11-07: "For the most part, though, we want to do it as a reactivati
 ## The line
 
 ```
-web/ signup page -> Stripe deposit -> web/ intake page -> POST /api/intake -> a Signups row in Notion
+web/: sales page -> signed agreement -> voice intake (GPT-Live) -> $500 deposit, last -> a Signups row in Notion
   -> rcm poll          every new paid row, on a schedule: the rest of this line, no person
   -> rcm signup        the paid session and the form become one intake
   -> rcm onboard       the client's record in the folder system: charters, manifest, ledger, Builds row

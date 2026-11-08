@@ -11,10 +11,12 @@ Justin's answers of 2026-11-07:
 | 1 | Price per qualified appointment | **Custom per client.** Justin fills Price in the client's Signups row; until then the record waits as `needs price` and the deposit isn't opened | Justin, per client | None |
 | 2 | Commission rate after day 90, and unused credit | Open | Justin | None |
 | 3 | A lawyer's read of the agreement (`offer/AGREEMENT.md`, published at `/terms/`) | Open | Justin | A lawyer's fee |
-| 4 | The Stripe deposit link | **Approved.** Waits on `STRIPE_SECRET_KEY`, and Stripe needs a terms URL in its public details (the site's `/terms/` page) | Justin adds the key; `scripts/go-live.sh` makes it | Stripe's fee per charge |
-| 5 | The Reactivation Signups database | **Done.** Under Command Center, data source `129d16fc-c867-4e30-b7e9-30633c302ba2`, with Price for custom pricing | | None |
-| 6 | The signup site (`reactivation-signup` on Cloudflare Pages: offer, intake, terms, `/api/intake`) | **Approved.** Waits on `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`, plus the site's own `STRIPE_READ_KEY` and `NOTION_TOKEN` | Justin adds the keys; `scripts/go-live.sh` deploys | Free tier |
-| 7 | The poller and its schedule | **Approved.** `scripts/install-poller.sh` runs `rcm poll --write-builds` every 15 minutes. It waits on `NOTION_TOKEN` and `STRIPE_READ_KEY` and does nothing without them | Justin adds the keys | None |
+| 4 | The Stripe deposit link | **Live in test mode**: $500, paid last, back to `/thanks/`. For live: a live link (`scripts/golive.py stripe --apply` with live keys) and a restricted live read key in place of the test secret | Justin's live keys | Stripe's fee per charge |
+| 5 | The Reactivation Signups database | **Done**, with statuses `agreement signed`, `intake done`, `new`, `needs price`, `onboarded`, `needs fix` and the signature field | | None |
+| 6 | The signup site | **Live**: https://reactivation-signup.pages.dev (sales, agreement, intake, thanks, terms) | | Free tier |
+| 6b | The voice (GPT-Live, `gpt-live-1`) | Built and tested; waits on `OPENAI_API_KEY` in the site's settings. Until then the typed fallback shows | Justin adds the key with `add-secret OPENAI_API_KEY` | OpenAI per second of voice |
+| 6c | Justin's own one-page lead generation agreement in place of the stand-in on `/agreement/` | Open | Justin sends it | None |
+| 7 | The poller | **Live**: every 15 minutes (launchd `com.usingaitoscale.rcm-poll`) | | None |
 | 8 | The engine: the CRM team (opener, replies, closer, deals), packaged by `scripts/build_engine.py`, pinned in `kit/engine.lock.json`, carried in each client's pack | **Built and tested offline.** Not yet run on a client's computer | The first client's install proves it | None |
 | 9 | A support login: `support@usingaitoscale.com` and a free Orgo account, to accept client workspace invites | Open | Justin (creating accounts is his) | None |
 | 10 | `reactivation-crm-agent` in the Products catalog (`products/catalog.json` in client-build-system, which the Notion sync reads) | **Done.** In the catalog at `12f1968` (front door, price unset); the Notion Products sync carries it | | None |
